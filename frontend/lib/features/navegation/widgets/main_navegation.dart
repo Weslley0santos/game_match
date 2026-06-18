@@ -1,19 +1,28 @@
 import 'package:flutter/material.dart';
 
+import '../../friends/screens/friends_screen.dart';
+import '../../games/screens/games_screen.dart';
 import '../../swipe/screens/swipe_screen.dart';
-import '../../history/screens/history_screen.dart';
 
 class MainNavigation extends StatefulWidget {
-  const MainNavigation({super.key});
+  final int initialIndex;
+
+  const MainNavigation({super.key, this.initialIndex = 0});
 
   @override
   State<MainNavigation> createState() => _MainNavigationState();
 }
 
 class _MainNavigationState extends State<MainNavigation> {
-  int currentIndex = 0;
+  late int currentIndex;
 
-  final pages = const [SwipeScreen(), HistoryScreen()];
+  final pages = const [SwipeScreen(), FriendsScreen(), GamesScreen()];
+
+  @override
+  void initState() {
+    super.initState();
+    currentIndex = widget.initialIndex;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,11 +44,15 @@ class _MainNavigationState extends State<MainNavigation> {
         items: const [
           BottomNavigationBarItem(
             icon: Icon(Icons.sports_esports),
-            label: 'Jogar',
+            label: 'Avaliar',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.history),
-            label: 'Histórico',
+            icon: Icon(Icons.people),
+            label: 'Amigos',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.videogame_asset),
+            label: 'Jogos',
           ),
         ],
       ),

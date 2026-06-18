@@ -1,72 +1,106 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/services/user_service.dart';
-import '../../../core/session/user_session.dart';
-import 'register_screen.dart';
-import '../../navegation/widgets/main_navegation.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class RegisterScreen extends StatefulWidget {
+  const RegisterScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<RegisterScreen> createState() => _RegisterScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _RegisterScreenState extends State<RegisterScreen> {
   final UserService _service = UserService();
 
+  final TextEditingController nameController = TextEditingController();
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
 
-  Future<void> login() async {
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> register() async {
+    final name = nameController.text.trim();
+    final email = emailController.text.trim();
+    final password = passwordController.text;
+
+    if (name.isEmpty || email.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Preencha todos os campos")),
+      );
+      return;
+    }
+
     setState(() => isLoading = true);
 
     try {
-      final user = await _service.login(
-        emailController.text,
-        passwordController.text,
-      );
-
-      UserSession.setUser(user);
+      await _service.createUser(name, email, password);
 
       if (!mounted) return;
 
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (context) => const MainNavigation()),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Cadastro realizado com sucesso")),
       );
-    } catch (e) {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text("Email ou senha invalidos")));
-    }
 
-    setState(() => isLoading = false);
+      Navigator.pop(context);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Nao foi possivel cadastrar usuario")),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => isLoading = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.black,
+      appBar: AppBar(title: const Text("Cadastro")),
       body: Center(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                "Game Match",
+                "Criar conta",
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 32),
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: "Nome",
+                  labelStyle: TextStyle(color: Colors.white),
+                  enabledBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.white),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderSide: BorderSide(color: Colors.green),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
               TextField(
                 controller: emailController,
+                keyboardType: TextInputType.emailAddress,
                 style: const TextStyle(color: Colors.white),
                 decoration: const InputDecoration(
                   labelText: "Email",
@@ -102,22 +136,10 @@ class _LoginScreenState extends State<LoginScreen> {
                 SizedBox(
                   width: double.infinity,
                   child: ElevatedButton(
-                    onPressed: login,
-                    child: const Text("Entrar"),
+                    onPressed: register,
+                    child: const Text("Cadastrar"),
                   ),
                 ),
-              const SizedBox(height: 12),
-              TextButton(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const RegisterScreen(),
-                    ),
-                  );
-                },
-                child: const Text("Criar conta"),
-              ),
             ],
           ),
         ),

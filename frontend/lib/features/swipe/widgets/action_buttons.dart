@@ -22,22 +22,49 @@ class ActionButtons extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
-          _buildButton(icon: Icons.close, color: Colors.red, onTap: onDislike),
-
-          _buildButton(
-            icon: Icons.star,
-            color: Colors.amber,
-            onTap: onFavorite,
-            size: 60,
+          _buildAction(
+            label: "Nao gostei",
+            child: _buildButton(
+              icon: Icons.close,
+              color: Colors.red,
+              onTap: onDislike,
+              tooltip: "Nao gostei",
+            ),
           ),
 
-          _buildButton(
-            icon: Icons.favorite,
-            color: Colors.green,
-            onTap: onLike,
+          _buildAction(
+            label: "Quero jogar",
+            child: _buildButton(
+              icon: Icons.star,
+              color: Colors.amber,
+              onTap: onFavorite,
+              tooltip: "Quero jogar",
+              size: 60,
+            ),
+          ),
+
+          _buildAction(
+            label: "Gostei",
+            child: _buildButton(
+              icon: Icons.favorite,
+              color: Colors.green,
+              onTap: onLike,
+              tooltip: "Gostei",
+            ),
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildAction({required String label, required Widget child}) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        child,
+        const SizedBox(height: 6),
+        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+      ],
     );
   }
 
@@ -45,26 +72,30 @@ class ActionButtons extends StatelessWidget {
     required IconData icon,
     required Color color,
     required VoidCallback onTap,
+    required String tooltip,
     double size = 55,
   }) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        height: size,
-        width: size,
-        decoration: BoxDecoration(
-          color: Colors.black,
-          shape: BoxShape.circle,
-          border: Border.all(color: color, width: 2),
-          boxShadow: [
-            BoxShadow(
-              color: color.withOpacity(0.3),
-              blurRadius: 10,
-              spreadRadius: 1,
-            ),
-          ],
+    return Tooltip(
+      message: tooltip,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: size,
+          width: size,
+          decoration: BoxDecoration(
+            color: Colors.black,
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 2),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 10,
+                spreadRadius: 1,
+              ),
+            ],
+          ),
+          child: Icon(icon, color: color, size: 26),
         ),
-        child: Icon(icon, color: color, size: 26),
       ),
     );
   }

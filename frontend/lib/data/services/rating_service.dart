@@ -14,6 +14,10 @@ class RatingService {
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"userId": userId, "gameId": gameId, "type": type}),
     );
+
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception("Erro ao salvar avaliacao");
+    }
   }
 
   Future<List<dynamic>> getUserRatings(int userId) async {
@@ -21,8 +25,8 @@ class RatingService {
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
-    } else {
-      throw Exception("Erro ao buscar histórico");
     }
+
+    throw Exception("Erro ao buscar avaliacoes");
   }
 }

@@ -15,14 +15,17 @@ public class Game {
 
     private String genre;
 
-    @Column(length = 1000)
+    @Column(length = 5000)
     private String description;
 
+    @Column(length = 1000)
     private String imageUrl;
+
+    private Long igdbId;
 
     @ElementCollection
     @CollectionTable(name = "game_platforms", joinColumns = @JoinColumn(name = "game_id"))
-    @Column(name = "platform")
+    @Column(name = "platform", length = 1000)
     private List<String> platforms;
 
     public Game() {}
@@ -32,6 +35,15 @@ public class Game {
         this.genre = genre;
         this.description = description;
         this.imageUrl = imageUrl;
+        this.platforms = platforms;
+    }
+
+    public Game(String title, String genre, String description, String imageUrl, Long igdbId, List<String> platforms) {
+        this.title = title;
+        this.genre = genre;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.igdbId = igdbId;
         this.platforms = platforms;
     }
 
@@ -53,6 +65,10 @@ public class Game {
 
     public String getImageUrl() {
         return imageUrl;
+    }
+
+    public Long getIgdbId() {
+        return igdbId;
     }
 
     public List<String> getPlatforms() {
@@ -77,6 +93,10 @@ public class Game {
 
     public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public void setIgdbId(Long igdbId) {
+        this.igdbId = igdbId;
     }
 
     public void setPlatforms(List<String> platforms) {

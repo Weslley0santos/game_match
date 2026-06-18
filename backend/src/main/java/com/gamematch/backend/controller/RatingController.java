@@ -18,6 +18,15 @@ public class RatingController {
 
     @PostMapping
     public Rating create(@RequestBody Rating rating) {
+        List<Rating> existingRatings = repository
+                .findAllByUserIdAndGameId(rating.getUserId(), rating.getGameId());
+
+        if (!existingRatings.isEmpty()) {
+            existingRatings.forEach(existingRating -> existingRating.setType(rating.getType()));
+            repository.saveAll(existingRatings);
+            return existingRatings.get(0);
+        }
+
         return repository.save(rating);
     }
 

@@ -10,17 +10,33 @@ class SwipeController {
 
   int currentIndex = 0;
 
-  bool isLoading = false;
+  bool isLoading = true;
 
   final List<GameModel> likedGames = [];
   final List<GameModel> dislikedGames = [];
   final List<GameModel> favoriteGames = [];
 
-  Future<void> loadGames() async {
+  Future<void> loadGames(int userId, {bool includeRatedGames = false}) async {
     try {
       isLoading = true;
 
-      games = await _service.fetchGames();
+      final allGames = await _service.fetchGames();
+
+      if (includeRatedGames) {
+        games = allGames;
+      } else {
+        final ratings = await _ratingService.getUserRatings(userId);
+        final ratedGameIds = ratings
+            .map((rating) => rating['gameId'])
+            .whereType<int>()
+            .toSet();
+
+        games = allGames
+            .where((game) => game.id != null && !ratedGameIds.contains(game.id))
+            .toList();
+      }
+
+      currentIndex = 0;
     } catch (e) {
       print("Erro ao carregar jogos: $e");
     } finally {

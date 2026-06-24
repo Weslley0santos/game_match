@@ -23,12 +23,12 @@ class ActionButtons extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
         children: [
           _buildAction(
-            label: "Nao gostei",
+            label: "Não gostei",
             child: _buildButton(
               icon: Icons.close,
               color: Colors.red,
               onTap: onDislike,
-              tooltip: "Nao gostei",
+              tooltip: "Não gostei",
             ),
           ),
 

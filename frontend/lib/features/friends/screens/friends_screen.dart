@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../core/session/user_session.dart';
 import '../../../data/services/friendship_service.dart';
 import '../../../data/services/match_service.dart';
+import '../../../data/services/play_invite_service.dart';
 import '../../../data/services/user_service.dart';
 
 class FriendsScreen extends StatefulWidget {
@@ -16,20 +17,25 @@ class _FriendsScreenState extends State<FriendsScreen> {
   final UserService userService = UserService();
   final FriendshipService friendshipService = FriendshipService();
   final MatchService matchService = MatchService();
+  final PlayInviteService playInviteService = PlayInviteService();
   final TextEditingController searchController = TextEditingController();
 
   List<dynamic> users = [];
   List<dynamic> pendingRequests = [];
   List<dynamic> acceptedFriends = [];
   List<dynamic> selectedMatches = [];
+  List<dynamic> receivedInvites = [];
+  List<dynamic> sentInvites = [];
 
   Map<int, int> matchCounts = {};
+  final Set<int> sentFriendRequestIds = {};
 
   bool loading = true;
   bool loadingMatches = false;
   String searchQuery = "";
   String? error;
   String? selectedFriendName;
+  int? selectedFriendId;
 
   @override
   void initState() {
@@ -48,7 +54,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     if (userId == null) {
       setState(() {
-        error = "Usuario nao logado";
+        error = "Usuário não logado";
         loading = false;
       });
       return;
@@ -58,12 +64,16 @@ class _FriendsScreenState extends State<FriendsScreen> {
       final allUsers = await userService.getUsers();
       final friends = await friendshipService.getAcceptedFriends(userId);
       final pending = await friendshipService.getPendingRequests(userId);
+      final received = await playInviteService.getReceivedInvites(userId);
+      final sent = await playInviteService.getSentInvites(userId);
       final counts = await loadMatchCounts(userId, friends);
 
       setState(() {
         users = allUsers.where((user) => user['id'] != userId).toList();
-        acceptedFriends = friends;
+        acceptedFriends = sortFriendsByMatchCount(friends, counts);
         pendingRequests = pending;
+        receivedInvites = received;
+        sentInvites = sent;
         matchCounts = counts;
         loading = false;
         error = null;
@@ -71,7 +81,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     } catch (e) {
       setState(() {
         error =
-            "Nao foi possivel carregar amigos. Verifique se o backend esta rodando.";
+            "Não foi possível carregar amigos. Verifique se o backend está rodando.";
         loading = false;
       });
     }
@@ -101,6 +111,24 @@ class _FriendsScreenState extends State<FriendsScreen> {
     return counts;
   }
 
+  List<dynamic> sortFriendsByMatchCount(
+    List<dynamic> friendships,
+    Map<int, int> counts,
+  ) {
+    final sortedFriendships = List<dynamic>.from(friendships);
+
+    sortedFriendships.sort((first, second) {
+      final firstId = getOtherUserId(Map<String, dynamic>.from(first));
+      final secondId = getOtherUserId(Map<String, dynamic>.from(second));
+      final firstCount = counts[firstId] ?? 0;
+      final secondCount = counts[secondId] ?? 0;
+
+      return secondCount.compareTo(firstCount);
+    });
+
+    return sortedFriendships;
+  }
+
   List<dynamic> get filteredUsers {
     final query = searchQuery.trim().toLowerCase();
 
@@ -120,9 +148,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     try {
       await friendshipService.sendRequest(userId: userId, friendId: friendId);
+      setState(() {
+        sentFriendRequestIds.add(friendId);
+      });
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Solicitacao enviada")),
+        const SnackBar(content: Text("Solicitação de amizade enviada.")),
       );
       await load();
     } catch (e) {
@@ -130,7 +161,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Nao foi possivel enviar. Talvez ja exista uma solicitacao ou amizade com esse usuario.",
+            "Não foi possível enviar. Talvez já exista uma solicitação ou amizade com esse usuário.",
           ),
         ),
       );
@@ -142,7 +173,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await friendshipService.acceptRequest(friendshipId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Solicitacao aceita")),
+        const SnackBar(content: Text("Amizade aceita.")),
       );
       await load();
     } catch (e) {
@@ -150,7 +181,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Nao foi possivel aceitar. Verifique se o backend esta rodando e tente novamente.",
+            "Não foi possível aceitar. Verifique se o backend está rodando e tente novamente.",
           ),
         ),
       );
@@ -162,7 +193,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       await friendshipService.rejectRequest(friendshipId);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Solicitacao recusada")),
+        const SnackBar(content: Text("Amizade recusada.")),
       );
       await load();
     } catch (e) {
@@ -170,7 +201,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Nao foi possivel recusar. Verifique se o backend esta rodando e tente novamente.",
+            "Não foi possível recusar. Verifique se o backend está rodando e tente novamente.",
           ),
         ),
       );
@@ -187,6 +218,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
     setState(() {
       loadingMatches = true;
       selectedFriendName = friendName;
+      selectedFriendId = friendId;
       selectedMatches = [];
     });
 
@@ -209,7 +241,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text(
-            "Nao foi possivel buscar jogos em comum. A amizade precisa estar aceita e o backend ativo.",
+            "Não foi possível buscar jogos em comum. A amizade precisa estar aceita e o backend ativo.",
           ),
         ),
       );
@@ -219,9 +251,90 @@ class _FriendsScreenState extends State<FriendsScreen> {
   void clearSelectedFriend() {
     setState(() {
       selectedFriendName = null;
+      selectedFriendId = null;
       selectedMatches = [];
       loadingMatches = false;
     });
+  }
+
+  Future<void> sendPlayInvite(dynamic match) async {
+    final senderId = UserSession.userId;
+    final receiverId = selectedFriendId;
+    final gameId = match['gameId'];
+
+    if (senderId == null || receiverId == null || gameId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Não foi possível enviar o convite.")),
+      );
+      return;
+    }
+
+    try {
+      await playInviteService.sendInvite(
+        senderId: senderId,
+        receiverId: receiverId,
+        gameId: gameId,
+      );
+
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Convite para jogar enviado.")),
+      );
+      await loadInvites();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Não foi possível enviar o convite.")),
+      );
+    }
+  }
+
+  Future<void> loadInvites() async {
+    final userId = UserSession.userId;
+    if (userId == null) return;
+
+    final received = await playInviteService.getReceivedInvites(userId);
+    final sent = await playInviteService.getSentInvites(userId);
+
+    setState(() {
+      receivedInvites = received;
+      sentInvites = sent;
+    });
+  }
+
+  dynamic findInviteForSelectedFriendAndGame(int gameId) {
+    final userId = UserSession.userId;
+    final friendId = selectedFriendId;
+
+    if (userId == null || friendId == null) return null;
+
+    final invites = [...sentInvites, ...receivedInvites];
+
+    for (final invite in invites) {
+      final sameGame = invite['gameId'] == gameId;
+      final sentToFriend =
+          invite['senderId'] == userId && invite['receiverId'] == friendId;
+      final receivedFromFriend =
+          invite['senderId'] == friendId && invite['receiverId'] == userId;
+
+      if (sameGame && (sentToFriend || receivedFromFriend)) {
+        return invite;
+      }
+    }
+
+    return null;
+  }
+
+  String inviteActionStatusText(String? status) {
+    switch (status) {
+      case "ACCEPTED":
+        return "Convite aceito";
+      case "REJECTED":
+        return "Convite recusado";
+      case "PENDING":
+      default:
+        return "Convite enviado";
+    }
   }
 
   int getOtherUserId(Map<String, dynamic> friendship) {
@@ -250,7 +363,6 @@ class _FriendsScreenState extends State<FriendsScreen> {
     if (error != null) {
       return Scaffold(
         backgroundColor: Colors.black,
-        appBar: AppBar(title: const Text("Amigos")),
         body: Center(
           child: Text(error!, style: const TextStyle(color: Colors.white)),
         ),
@@ -262,11 +374,11 @@ class _FriendsScreenState extends State<FriendsScreen> {
       child: Scaffold(
         backgroundColor: Colors.black,
         appBar: AppBar(
-          title: const Text("Amigos"),
+          toolbarHeight: 0,
           bottom: const TabBar(
             tabs: [
               Tab(text: "Amigos"),
-              Tab(text: "Solicitacoes"),
+              Tab(text: "Solicitações"),
             ],
           ),
         ),
@@ -288,12 +400,12 @@ class _FriendsScreenState extends State<FriendsScreen> {
         children: [
           if (selectedFriendName == null) ...[
             emptyText(
-              "Escolha um amigo para ver jogos compativeis entre voces.",
+              "Escolha um amigo para ver jogos compatíveis entre vocês.",
             ),
             const SizedBox(height: 8),
             if (acceptedFriends.isEmpty)
               emptyText(
-                "Voce ainda nao tem amigos aceitos. Use a aba Solicitacoes para buscar usuarios ou responder convites.",
+                "Você ainda não tem amigos aceitos. Use a aba Solicitações para buscar usuários ou responder convites.",
               )
             else
               ...acceptedFriends.map((friendship) => friendTile(friendship)),
@@ -323,18 +435,18 @@ class _FriendsScreenState extends State<FriendsScreen> {
           const SizedBox(height: 12),
           sectionTitle("Resultados da busca"),
           if (searchQuery.trim().isEmpty)
-            emptyText("Digite o nome de um usuario para enviar uma solicitacao.")
+            emptyText("Digite o nome de um usuário para enviar uma solicitação.")
           else if (filteredUsers.isEmpty)
             emptyText(
-              "Nenhum usuario encontrado com esse nome. Confira a escrita ou tente outro nome.",
+              "Nenhum usuário encontrado com esse nome. Confira a escrita ou tente outro nome.",
             )
           else
             ...filteredUsers.map((user) => userTile(user)),
           const SizedBox(height: 24),
-          sectionTitle("Solicitacoes pendentes"),
+          sectionTitle("Solicitações pendentes"),
           if (pendingRequests.isEmpty)
             emptyText(
-              "Voce nao tem solicitacoes pendentes no momento.",
+              "Você não tem solicitações pendentes no momento.",
             )
           else
             ...pendingRequests.map((request) => pendingTile(request)),
@@ -353,7 +465,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         });
       },
       decoration: InputDecoration(
-        labelText: "Buscar por nome",
+        labelText: "Buscar pessoas",
         labelStyle: const TextStyle(color: Colors.white70),
         prefixIcon: const Icon(Icons.search, color: Colors.white70),
         filled: true,
@@ -388,27 +500,72 @@ class _FriendsScreenState extends State<FriendsScreen> {
   }
 
   Widget userTile(dynamic user) {
+    final userId = user['id'];
+    final isSentRequest = userId is int && sentFriendRequestIds.contains(userId);
+    final isAcceptedFriend = userId is int && hasAcceptedFriendshipWith(userId);
+
     return Card(
       color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
+        leading: const Icon(Icons.person, color: Colors.white70),
         title: Text(
-          user['name'] ?? "Usuario sem nome",
+          user['name'] ?? "Usuário sem nome",
           style: const TextStyle(color: Colors.white),
         ),
-        trailing: ElevatedButton(
-          onPressed: () => sendRequest(user['id']),
-          child: const Text("Solicitar amizade"),
+        trailing: friendRequestTrailing(
+          userId: userId,
+          isSentRequest: isSentRequest,
+          isAcceptedFriend: isAcceptedFriend,
         ),
       ),
     );
   }
 
+  Widget friendRequestTrailing({
+    required dynamic userId,
+    required bool isSentRequest,
+    required bool isAcceptedFriend,
+  }) {
+    if (isAcceptedFriend) {
+      return const Text(
+        "Amigo",
+        style: TextStyle(color: Colors.white70),
+      );
+    }
+
+    if (isSentRequest) {
+      return const Text(
+        "Solicitação enviada",
+        style: TextStyle(color: Colors.white70),
+      );
+    }
+
+    return ElevatedButton(
+      onPressed: userId is int ? () => sendRequest(userId) : null,
+      child: const Text("Solicitar amizade"),
+    );
+  }
+
+  bool hasAcceptedFriendshipWith(int userId) {
+    for (final friendship in acceptedFriends) {
+      final data = Map<String, dynamic>.from(friendship);
+      if (getOtherUserId(data) == userId) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   Widget pendingTile(dynamic request) {
     return Card(
       color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
+        leading: const Icon(Icons.person_add, color: Colors.white70),
         title: Text(
-          request['userName'] ?? "Usuario",
+          request['userName'] ?? "Usuário",
           style: const TextStyle(color: Colors.white),
         ),
         trailing: SizedBox(
@@ -440,8 +597,10 @@ class _FriendsScreenState extends State<FriendsScreen> {
 
     return Card(
       color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
         onTap: () => loadMatches(data),
+        leading: const Icon(Icons.person, color: Colors.white70),
         title: Text(
           getOtherUserName(data),
           style: const TextStyle(color: Colors.white),
@@ -450,6 +609,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
           "$commonGames jogos em comum",
           style: const TextStyle(color: Colors.white70),
         ),
+        trailing: const Icon(Icons.chevron_right, color: Colors.white70),
       ),
     );
   }
@@ -471,7 +631,7 @@ class _FriendsScreenState extends State<FriendsScreen> {
         sectionTitle("Jogos em comum com $selectedFriendName"),
         if (selectedMatches.isEmpty)
           emptyText(
-            "Nenhum jogo em comum encontrado. Voces precisam avaliar o mesmo jogo com gostei ou quero jogar.",
+            "Nenhum jogo em comum encontrado. Vocês precisam avaliar o mesmo jogo com gostei ou quero jogar.",
           )
         else
           ...selectedMatches.map((match) => matchTile(match)),
@@ -482,9 +642,14 @@ class _FriendsScreenState extends State<FriendsScreen> {
   Widget matchTile(dynamic match) {
     final priorityInterest = match['priorityInterest'];
     final hasFavorite = priorityInterest == "FAVORITE";
+    final gameId = match['gameId'];
+    final existingInvite = gameId == null
+        ? null
+        : findInviteForSelectedFriendAndGame(gameId);
 
     return Card(
       color: const Color(0xFF1E1E1E),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       child: ListTile(
         leading: ClipRRect(
           borderRadius: BorderRadius.circular(8),
@@ -505,6 +670,15 @@ class _FriendsScreenState extends State<FriendsScreen> {
           hasFavorite ? "Quer jogar" : "Tem interesse",
           style: const TextStyle(color: Colors.white70),
         ),
+        trailing: existingInvite == null
+            ? TextButton(
+                onPressed: () => sendPlayInvite(match),
+                child: const Text("Convidar para jogar"),
+              )
+            : Text(
+                inviteActionStatusText(existingInvite['status']),
+                style: const TextStyle(color: Colors.white70),
+              ),
       ),
     );
   }

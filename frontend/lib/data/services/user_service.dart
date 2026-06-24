@@ -1,24 +1,23 @@
 import 'dart:convert';
+
 import 'package:http/http.dart' as http;
 
+import '../../core/config/api_config.dart';
+import 'api_service_helper.dart';
+
 class UserService {
-  final String baseUrl = "http://10.0.2.2:8080/users";
+  final String baseUrl = "${ApiConfig.baseUrl}/users";
 
   Future<Map<String, dynamic>> login(String email, String password) async {
-    final url = Uri.parse("$baseUrl/login");
-
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"email": email, "password": password}),
+    final response = await ApiServiceHelper.request(
+      () => http.post(
+        Uri.parse("$baseUrl/login"),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"email": email, "password": password}),
+      ),
     );
 
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return data;
-    } else {
-      throw Exception("Login inválido");
-    }
+    return ApiServiceHelper.decodeMap(response);
   }
 
   Future<Map<String, dynamic>> createUser(
@@ -26,18 +25,22 @@ class UserService {
     String email,
     String password,
   ) async {
-    final response = await http.post(
-      Uri.parse(baseUrl),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"name": name, "email": email, "password": password}),
+    final response = await ApiServiceHelper.request(
+      () => http.post(
+        Uri.parse(baseUrl),
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({"name": name, "email": email, "password": password}),
+      ),
     );
 
-    return jsonDecode(response.body);
+    return ApiServiceHelper.decodeMap(response);
   }
 
   Future<List<dynamic>> getUsers() async {
-    final response = await http.get(Uri.parse(baseUrl));
+    final response = await ApiServiceHelper.request(
+      () => http.get(Uri.parse(baseUrl)),
+    );
 
-    return jsonDecode(response.body);
+    return ApiServiceHelper.decodeList(response);
   }
 }

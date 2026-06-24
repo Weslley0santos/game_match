@@ -1,8 +1,11 @@
 package com.gamematch.backend.controller;
 
+import com.gamematch.backend.dto.UserResponse;
 import com.gamematch.backend.model.User;
 import com.gamematch.backend.repository.UserRepository;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
@@ -17,12 +20,16 @@ public class UserController {
     }
 
     @PostMapping
-    public User create(@RequestBody User user) {
-        return repository.save(user);
+    public UserResponse create(@RequestBody User user) {
+        repository.findByEmail(user.getEmail()).ifPresent(existingUser -> {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
+        });
+
+        return UserResponse.from(repository.save(user));
     }
 
     @PostMapping("/login")
-    public User login(@RequestBody User request) {
+    public UserResponse login(@RequestBody User request) {
 
         User user = repository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("User not found"));
@@ -31,11 +38,14 @@ public class UserController {
             throw new RuntimeException("Invalid password");
         }
 
-        return user;
+        return UserResponse.from(user);
     }
 
     @GetMapping
-    public List<User> getAll() {
-        return repository.findAll();
+    public List<UserResponse> getAll() {
+        return repository.findAll()
+                .stream()
+                .map(UserResponse::from)
+                .toList();
     }
 }

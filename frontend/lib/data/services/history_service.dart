@@ -1,16 +1,16 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../core/config/api_config.dart';
+import 'api_service_helper.dart';
+
 class HistoryService {
-  final String baseUrl = "http://10.0.2.2:8080/ratings";
+  final String baseUrl = "${ApiConfig.baseUrl}/ratings";
 
   Future<List<dynamic>> getUserHistory(int userId) async {
-    final response = await http.get(Uri.parse("$baseUrl/user/$userId"));
+    final response = await ApiServiceHelper.request(
+      () => http.get(Uri.parse("$baseUrl/user/$userId")),
+    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception("Erro ao buscar histórico");
-    }
+    return ApiServiceHelper.decodeList(response);
   }
 }

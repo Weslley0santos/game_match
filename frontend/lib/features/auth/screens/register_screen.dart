@@ -54,7 +54,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       if (!mounted) return;
 
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Nao foi possivel cadastrar usuario")),
+        const SnackBar(content: Text("Não foi possível cadastrar usuário")),
       );
     } finally {
       if (mounted) {

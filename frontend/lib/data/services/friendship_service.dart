@@ -1,61 +1,51 @@
-import 'dart:convert';
 import 'package:http/http.dart' as http;
 
+import '../../core/config/api_config.dart';
+import 'api_service_helper.dart';
+
 class FriendshipService {
-  final String baseUrl = "http://10.0.2.2:8080/friendships";
+  final String baseUrl = "${ApiConfig.baseUrl}/friendships";
 
   Future<Map<String, dynamic>> sendRequest({
     required int userId,
     required int friendId,
   }) async {
-    final response = await http.post(
-      Uri.parse("$baseUrl?userId=$userId&friendId=$friendId"),
+    final response = await ApiServiceHelper.request(
+      () => http.post(Uri.parse("$baseUrl?userId=$userId&friendId=$friendId")),
     );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
-
-    throw Exception("Erro ao enviar solicitacao");
+    return ApiServiceHelper.decodeMap(response);
   }
 
   Future<List<dynamic>> getAcceptedFriends(int userId) async {
-    final response = await http.get(Uri.parse("$baseUrl/$userId"));
+    final response = await ApiServiceHelper.request(
+      () => http.get(Uri.parse("$baseUrl/$userId")),
+    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
-
-    throw Exception("Erro ao buscar amigos");
+    return ApiServiceHelper.decodeList(response);
   }
 
   Future<List<dynamic>> getPendingRequests(int userId) async {
-    final response = await http.get(Uri.parse("$baseUrl/$userId/pending"));
+    final response = await ApiServiceHelper.request(
+      () => http.get(Uri.parse("$baseUrl/$userId/pending")),
+    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
-
-    throw Exception("Erro ao buscar solicitacoes pendentes");
+    return ApiServiceHelper.decodeList(response);
   }
 
   Future<Map<String, dynamic>> acceptRequest(int friendshipId) async {
-    final response = await http.put(Uri.parse("$baseUrl/$friendshipId/accept"));
+    final response = await ApiServiceHelper.request(
+      () => http.put(Uri.parse("$baseUrl/$friendshipId/accept")),
+    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
-
-    throw Exception("Erro ao aceitar solicitacao");
+    return ApiServiceHelper.decodeMap(response);
   }
 
   Future<Map<String, dynamic>> rejectRequest(int friendshipId) async {
-    final response = await http.put(Uri.parse("$baseUrl/$friendshipId/reject"));
+    final response = await ApiServiceHelper.request(
+      () => http.put(Uri.parse("$baseUrl/$friendshipId/reject")),
+    );
 
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    }
-
-    throw Exception("Erro ao recusar solicitacao");
+    return ApiServiceHelper.decodeMap(response);
   }
 }

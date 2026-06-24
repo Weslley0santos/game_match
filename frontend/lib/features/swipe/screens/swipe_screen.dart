@@ -45,6 +45,24 @@ class _SwipeScreenState extends State<SwipeScreen> {
     );
   }
 
+  Future<void> registerRating(Future<void> Function(int userId) action) async {
+    final userId = UserSession.userId;
+    if (userId == null) return;
+
+    try {
+      await action(userId);
+      if (!mounted) return;
+      setState(() {});
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text("Não foi possível registrar a avaliação."),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     if (controller.isLoading) {
@@ -64,7 +82,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 const Text(
-                  'Voce ja avaliou todos os jogos disponiveis.',
+                  'Você já avaliou todos os jogos disponíveis.',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -74,7 +92,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 ),
                 const SizedBox(height: 12),
                 const Text(
-                  'Reinicie a avaliacao para revisar suas escolhas e atualizar seus interesses.',
+                  'Reinicie a avaliação para revisar suas escolhas e atualizar seus interesses.',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70),
                 ),
@@ -83,7 +101,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                   width: double.infinity,
                   child: ElevatedButton(
                     onPressed: () => openTab(2),
-                    child: const Text('Ver jogos compativeis'),
+                    child: const Text('Ver jogos compatíveis'),
                   ),
                 ),
                 const SizedBox(height: 8),
@@ -97,7 +115,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 const SizedBox(height: 8),
                 ElevatedButton(
                   onPressed: () => loadGames(includeRatedGames: true),
-                  child: const Text('Reiniciar avaliacao'),
+                  child: const Text('Reiniciar avaliação'),
                 ),
               ],
             ),
@@ -115,7 +133,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Text(
-                'Voce avaliou todos os jogos',
+                'Você avaliou todos os jogos',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -127,7 +145,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 width: 220,
                 child: ElevatedButton(
                   onPressed: () => openTab(2),
-                  child: const Text('Ver jogos compativeis'),
+                  child: const Text('Ver jogos compatíveis'),
                 ),
               ),
               const SizedBox(height: 8),
@@ -143,7 +161,7 @@ class _SwipeScreenState extends State<SwipeScreen> {
                 width: 220,
                 child: ElevatedButton(
                   onPressed: () => loadGames(includeRatedGames: true),
-                  child: const Text('Reiniciar avaliacao'),
+                  child: const Text('Reiniciar avaliação'),
                 ),
               ),
             ],
@@ -165,8 +183,6 @@ class _SwipeScreenState extends State<SwipeScreen> {
         ),
       );
     }
-    final userId = UserSession.userId;
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Stack(
@@ -183,24 +199,9 @@ class _SwipeScreenState extends State<SwipeScreen> {
           ),
           GameCard(game: game),
           ActionButtons(
-            onDislike: () async {
-              if (userId == null) return;
-
-              await controller.dislikeGame(userId);
-              setState(() {});
-            },
-            onLike: () async {
-              if (userId == null) return;
-
-              await controller.likeGame(userId);
-              setState(() {});
-            },
-            onFavorite: () async {
-              if (userId == null) return;
-
-              await controller.favoriteGame(userId);
-              setState(() {});
-            },
+            onDislike: () => registerRating(controller.dislikeGame),
+            onLike: () => registerRating(controller.likeGame),
+            onFavorite: () => registerRating(controller.favoriteGame),
           ),
         ],
       ),

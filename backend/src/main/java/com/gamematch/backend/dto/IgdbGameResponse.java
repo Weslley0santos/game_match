@@ -1,5 +1,7 @@
 package com.gamematch.backend.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.List;
 
 public class IgdbGameResponse {
@@ -10,6 +12,14 @@ public class IgdbGameResponse {
     private IgdbCoverResponse cover;
     private List<IgdbGenreResponse> genres;
     private List<IgdbPlatformResponse> platforms;
+    @JsonProperty("game_type")
+    private Integer gameType;
+
+    @JsonProperty("parent_game")
+    private Long parentGame;
+
+    @JsonProperty("version_parent")
+    private Long versionParent;
 
     public Long getId() {
         return id;
@@ -57,6 +67,30 @@ public class IgdbGameResponse {
 
     public void setPlatforms(List<IgdbPlatformResponse> platforms) {
         this.platforms = platforms;
+    }
+
+    public Integer getGameType() {
+        return gameType;
+    }
+
+    public void setGameType(Integer gameType) {
+        this.gameType = gameType;
+    }
+
+    public Long getParentGame() {
+        return parentGame;
+    }
+
+    public void setParentGame(Long parentGame) {
+        this.parentGame = parentGame;
+    }
+
+    public Long getVersionParent() {
+        return versionParent;
+    }
+
+    public void setVersionParent(Long versionParent) {
+        this.versionParent = versionParent;
     }
 
     public static class IgdbCoverResponse {

@@ -72,7 +72,7 @@ public class IgdbGameService {
         return baseUrl.endsWith("/") ? baseUrl + "games" : baseUrl + "/games";
     }
 
-    private String buildSearchBody(String query, boolean onlyMainGames) {
+    String buildSearchBody(String query, boolean onlyMainGames) {
         String escapedQuery = query.trim()
                 .replace("\\", "\\\\")
                 .replace("\"", "\\\"");
@@ -80,7 +80,8 @@ public class IgdbGameService {
         if (onlyMainGames) {
             return """
                     search "%s";
-                    fields id,name,summary,cover.url,genres.name,platforms.name,category,parent_game,version_parent;
+                    fields id,name,summary,cover.url,genres.name,platforms.name,game_type,parent_game,version_parent;
+                    where game_type = 0 & version_parent = null;
                     limit %d;
                     """.formatted(escapedQuery, SEARCH_LIMIT);
         }

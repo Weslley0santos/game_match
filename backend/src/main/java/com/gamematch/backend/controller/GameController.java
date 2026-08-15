@@ -87,25 +87,26 @@ public class GameController {
                 .toList();
         logger.info("IGDB import query '{}' has {} games after removing missing IGDB ids.", query, gamesWithId.size());
 
-        List<IgdbGameResponse> gamesAfterNameFilter = gamesWithId.stream()
+        List<IgdbGameResponse> validMainGames = gamesWithId.stream()
+                .filter(this::isMainGame)
                 .filter(this::isMainGameByName)
                 .toList();
         logger.info(
-                "IGDB import query '{}' has {} games after anti-extra-content filters. Removed by name filter: {}.",
+                "IGDB import query '{}' has {} games after main-game and anti-extra-content filters. Removed: {}.",
                 query,
-                gamesAfterNameFilter.size(),
-                gamesWithId.size() - gamesAfterNameFilter.size()
+                validMainGames.size(),
+                gamesWithId.size() - validMainGames.size()
         );
 
         Set<Long> igdbIdsToImport = new HashSet<>();
-        List<IgdbGameResponse> uniqueIgdbGames = gamesAfterNameFilter.stream()
+        List<IgdbGameResponse> uniqueIgdbGames = validMainGames.stream()
                 .filter(igdbGame -> igdbIdsToImport.add(igdbGame.getId()))
                 .toList();
         logger.info(
                 "IGDB import query '{}' has {} unique IGDB games. Removed duplicated IGDB ids from response: {}.",
                 query,
                 uniqueIgdbGames.size(),
-                gamesAfterNameFilter.size() - uniqueIgdbGames.size()
+                validMainGames.size() - uniqueIgdbGames.size()
         );
 
         List<Game> gamesToImport = uniqueIgdbGames.stream()
@@ -137,9 +138,14 @@ public class GameController {
 
         List<IgdbGameResponse> validGames = igdbGames.stream()
                 .filter(igdbGame -> igdbGame.getId() != null)
+                .filter(this::isMainGame)
                 .filter(this::isMainGameByName)
                 .toList();
-        logger.info("IGDB import-one query '{}' has {} games after anti-extra-content filters.", query, validGames.size());
+        logger.info(
+                "IGDB import-one query '{}' has {} games after main-game and anti-extra-content filters.",
+                query,
+                validGames.size()
+        );
 
         IgdbGameResponse selectedGame = validGames.stream()
                 .min(Comparator.comparingInt(igdbGame -> getNameMatchScore(query, igdbGame.getName())))
@@ -221,6 +227,12 @@ public class GameController {
         String normalizedName = name.toLowerCase();
         return EXTRA_CONTENT_TERMS.stream()
                 .noneMatch(normalizedName::contains);
+    }
+
+    private boolean isMainGame(IgdbGameResponse igdbGame) {
+        return Integer.valueOf(0).equals(igdbGame.getGameType())
+                && igdbGame.getParentGame() == null
+                && igdbGame.getVersionParent() == null;
     }
 
     private int getNameMatchScore(String query, String gameName) {

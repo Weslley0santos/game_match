@@ -25,7 +25,7 @@ public class IgdbProperties {
     }
 
     public void setClientId(String clientId) {
-        this.clientId = clientId;
+        this.clientId = normalizeCredential(clientId);
     }
 
     public String getClientSecret() {
@@ -33,7 +33,27 @@ public class IgdbProperties {
     }
 
     public void setClientSecret(String clientSecret) {
-        this.clientSecret = clientSecret;
+        this.clientSecret = normalizeCredential(clientSecret);
+    }
+
+    private String normalizeCredential(String value) {
+        if (value == null) {
+            return null;
+        }
+
+        String normalizedValue = value.trim();
+        if (normalizedValue.length() >= 2) {
+            char firstCharacter = normalizedValue.charAt(0);
+            char lastCharacter = normalizedValue.charAt(normalizedValue.length() - 1);
+            boolean hasMatchingQuotes = (firstCharacter == '"' && lastCharacter == '"')
+                    || (firstCharacter == '\'' && lastCharacter == '\'');
+
+            if (hasMatchingQuotes) {
+                normalizedValue = normalizedValue.substring(1, normalizedValue.length() - 1).trim();
+            }
+        }
+
+        return normalizedValue;
     }
 
     public static class Api {

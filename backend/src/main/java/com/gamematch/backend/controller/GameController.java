@@ -56,13 +56,13 @@ public class GameController {
         this.igdbGameService = igdbGameService;
     }
 
-    // GET /games -> lista todos os jogos
+    // GET /games : lista todos os jogos
     @GetMapping
     public List<Game> getAllGames() {
         return gameRepository.findAll();
     }
 
-    // GET /games/igdb/search?query=termo -> busca jogos na IGDB sem salvar no banco
+    // GET /games/igdb/search?query=termo : busca jogos na IGDB sem salvar no banco
     @GetMapping("/igdb/search")
     public List<IgdbGameResponse> searchIgdbGames(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
@@ -72,7 +72,7 @@ public class GameController {
         return igdbGameService.searchGames(query);
     }
 
-    // POST /games/igdb/import?query=termo -> busca jogos na IGDB e salva os novos no banco
+    // POST /games/igdb/import?query=termo : busca jogos na IGDB e salva os novos no banco
     @PostMapping("/igdb/import")
     public List<Game> importIgdbGames(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
@@ -125,7 +125,7 @@ public class GameController {
         return savedGames;
     }
 
-    // POST /games/igdb/import-one?query=termo -> busca jogos na IGDB e salva apenas um resultado
+    // POST /games/igdb/import-one?query=termo : busca jogos na IGDB e salva apenas um resultado
     @PostMapping("/igdb/import-one")
     public Game importOneIgdbGame(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
@@ -164,7 +164,7 @@ public class GameController {
         return savedGame;
     }
 
-    // POST /games -> cria um jogo
+    // POST /games : cria um jogo
     @PostMapping
     public Game createGame(@RequestBody Game game) {
         return gameRepository.save(game);

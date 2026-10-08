@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../data/services/history_service.dart';
+import '../../../data/services/rating_service.dart';
 import '../../../data/services/game_service.dart';
 import '../../../core/session/user_session.dart';
 
@@ -12,7 +12,7 @@ class HistoryScreen extends StatefulWidget {
 }
 
 class _HistoryScreenState extends State<HistoryScreen> {
-  final service = HistoryService();
+  final service = RatingService();
   final gameService = GameService();
 
   List<dynamic> history = [];
@@ -41,7 +41,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
       }
 
       final games = await gameService.fetchGames();
-      final data = await service.getUserHistory(user['id']);
+      final data = await service.getUserRatings(user['id']);
 
       gameNames = {for (var g in games) g.id!: g.title};
 

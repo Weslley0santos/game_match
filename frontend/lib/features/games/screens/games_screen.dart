@@ -27,6 +27,7 @@ class _GamesScreenState extends State<GamesScreen> {
   String? invitesError;
   String? selectedGameTitle;
   int? selectedGameId;
+  dynamic selectedGame;
 
   @override
   void initState() {
@@ -71,6 +72,7 @@ class _GamesScreenState extends State<GamesScreen> {
       loadingFriends = true;
       selectedGameTitle = game['gameTitle'] ?? "Jogo";
       selectedGameId = game['gameId'];
+      selectedGame = game;
       selectedFriends = [];
     });
 
@@ -102,6 +104,7 @@ class _GamesScreenState extends State<GamesScreen> {
     setState(() {
       selectedGameTitle = null;
       selectedGameId = null;
+      selectedGame = null;
       selectedFriends = [];
       loadingFriends = false;
     });
@@ -317,12 +320,7 @@ class _GamesScreenState extends State<GamesScreen> {
             ],
           ),
         ),
-        body: TabBarView(
-          children: [
-            compatibleGamesTab(),
-            invitesTab(),
-          ],
-        ),
+        body: TabBarView(children: [compatibleGamesTab(), invitesTab()]),
       ),
     );
   }
@@ -412,7 +410,7 @@ class _GamesScreenState extends State<GamesScreen> {
           style: const TextStyle(color: Colors.white),
         ),
         subtitle: Text(
-          interestSummary(compatibleFriends, favoriteFriends),
+          compatibleGameInterestSummary(compatibleFriends, favoriteFriends),
           style: const TextStyle(color: Colors.white70),
         ),
         trailing: const Icon(Icons.chevron_right, color: Colors.white70),
@@ -440,22 +438,6 @@ class _GamesScreenState extends State<GamesScreen> {
     return sortedGames;
   }
 
-  String interestSummary(int compatibleFriends, int favoriteFriends) {
-    final interestedText = compatibleFriends == 1
-        ? "1 amigo interessado"
-        : "$compatibleFriends amigos interessados";
-
-    if (favoriteFriends <= 0) {
-      return interestedText;
-    }
-
-    final favoriteText = favoriteFriends == 1
-        ? "1 quer jogar"
-        : "$favoriteFriends querem jogar";
-
-    return "$interestedText\n$favoriteText";
-  }
-
   Widget interestedFriendsSection() {
     if (selectedGameTitle == null) {
       return emptyText(
@@ -477,7 +459,13 @@ class _GamesScreenState extends State<GamesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        sectionTitle("Amigos interessados em $selectedGameTitle"),
+        if (selectedGame != null)
+          GameDetailHeader(
+            title: selectedGame['gameTitle'] ?? "Jogo",
+            imageUrl: selectedGame['imageUrl'] ?? "",
+            compatibleFriends: selectedGame['compatibleFriendsCount'] ?? 0,
+            favoriteFriends: selectedGame['favoriteFriendsCount'] ?? 0,
+          ),
         if (selectedFriends.isEmpty)
           emptyText(
             "Nenhum amigo interessado encontrado para este jogo.\nConvites poderão aparecer quando amigos também demonstrarem interesse.",
@@ -629,3 +617,94 @@ class _GamesScreenState extends State<GamesScreen> {
   }
 }
 
+String compatibleGameInterestSummary(
+  int compatibleFriends,
+  int favoriteFriends, {
+  String separator = "\n",
+}) {
+  final interestedText = compatibleFriends == 1
+      ? "1 amigo interessado"
+      : "$compatibleFriends amigos interessados";
+
+  if (favoriteFriends <= 0) {
+    return interestedText;
+  }
+
+  final favoriteText = favoriteFriends == 1
+      ? "1 quer jogar"
+      : "$favoriteFriends querem jogar";
+
+  return "$interestedText$separator$favoriteText";
+}
+
+class GameDetailHeader extends StatelessWidget {
+  final String title;
+  final String imageUrl;
+  final int compatibleFriends;
+  final int favoriteFriends;
+
+  const GameDetailHeader({
+    super.key,
+    required this.title,
+    required this.imageUrl,
+    required this.compatibleFriends,
+    required this.favoriteFriends,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1E1E),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.network(
+              imageUrl,
+              width: 56,
+              height: 56,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) => const SizedBox(
+                width: 56,
+                height: 56,
+                child: Icon(Icons.games, color: Colors.white70),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  compatibleGameInterestSummary(
+                    compatibleFriends,
+                    favoriteFriends,
+                    separator: " · ",
+                  ),
+                  style: const TextStyle(color: Colors.white70),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}

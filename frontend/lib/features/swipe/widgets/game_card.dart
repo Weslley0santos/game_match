@@ -34,8 +34,8 @@ class GameCard extends StatelessWidget {
             children: [
               if (hasImage)
                 Image.network(
-                  game.imageUrl,
-                  fit: BoxFit.cover,
+                  game.imageUrl.replaceFirst('/t_thumb/', '/t_1080p/'),
+                  fit: BoxFit.contain,
                   errorBuilder: (_, __, ___) => const Center(
                     child: Icon(Icons.games, color: Colors.white70, size: 80),
                   ),
@@ -179,7 +179,10 @@ class GameCard extends StatelessWidget {
                     width: double.infinity,
                     child: hasImage
                         ? Image.network(
-                            game.imageUrl,
+                            game.imageUrl.replaceFirst(
+                              '/t_thumb/',
+                              '/t_1080p/',
+                            ),
                             fit: BoxFit.cover,
                             errorBuilder: (_, __, ___) => const Center(
                               child: Icon(

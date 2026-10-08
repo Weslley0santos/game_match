@@ -30,14 +30,6 @@ public class Game {
 
     public Game() {}
 
-    public Game(String title, String genre, String description, String imageUrl, List<String> platforms) {
-        this.title = title;
-        this.genre = genre;
-        this.description = description;
-        this.imageUrl = imageUrl;
-        this.platforms = platforms;
-    }
-
     public Game(String title, String genre, String description, String imageUrl, Long igdbId, List<String> platforms) {
         this.title = title;
         this.genre = genre;

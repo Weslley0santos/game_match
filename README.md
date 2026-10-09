@@ -145,6 +145,12 @@ mvn test
 
 A API permite ate 10 tentativas de login por IP a cada 15 minutos. A tentativa seguinte recebe HTTP 429; um login bem-sucedido limpa o contador.
 
+## Logs do backend
+
+Cada requisição gera uma linha `http_request` com `requestId`, método, caminho, status HTTP e duração. O mesmo identificador vai no header `X-Request-Id` da resposta e no prefixo das mensagens da aplicação durante a requisição. Corpos, query strings, headers de autenticação, senhas, tokens e IPs não são registrados.
+
+O SQL do Hibernate fica desligado por padrão. Para investigar consultas localmente, adicione `HIBERNATE_SQL_LOG_LEVEL=DEBUG` ao `.env` e reinicie o backend. Depois da investigação, remova a variável ou defina-a como `OFF`. Os valores dos parâmetros SQL continuam ocultos.
+
 ### Ordem de rollout antes de produção
 
 1. Fazer backup dos bancos de origem e destino.

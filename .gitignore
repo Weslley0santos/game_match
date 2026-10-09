@@ -3,3 +3,5 @@
 !.env.example
 .dev/
 .idea/
+/docs/
+/.superpowers/

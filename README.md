@@ -50,17 +50,9 @@ $bytes = [byte[]]::new(32)
 
 Copie o resultado para `JWT_SECRET`. O backend exige essa chave para iniciar; mantenha-a privada e estÃ¡vel, pois trocÃ¡-la invalida todas as sessÃµes ativas. O login retorna um token JWT com validade de 12 horas. Quando expirar, entre novamente.
 
-### MigraÃ§Ã£o das senhas existentes
+### Migração das senhas existentes
 
-FaÃ§a um backup do banco antes da primeira inicializaÃ§Ã£o com a nova versÃ£o. Converta as senhas antigas em texto simples para BCrypt uma Ãºnica vez:
-
-```powershell
-cd backend
-.\mvnw.cmd "-DskipTests" "spring-boot:run" "-Dspring-boot.run.main-class=com.gamematch.backend.migration.PasswordMigrationApplication" "-Dspring-boot.run.arguments=--confirm-password-migration"
-```
-
-Execute somente depois de confirmar o backup e configure o mesmo `.env` usado pelo backend. NÃ£o rode essa migraÃ§Ã£o novamente apÃ³s a conversÃ£o.
-Depois de confirmar a contagem e testar o login, remova a ferramenta de migraÃ§Ã£o (`PasswordMigrationApplication` e `PasswordMigrationRunner`) do cÃ³digo antes do deploy normal.
+Neste banco local, a migração para BCrypt foi concluída e o login após a migração foi validado. A ferramenta usada nessa conversão pontual foi removida do código. Se outro banco com senhas legadas for conectado ao backend, planeje uma migração específica com backup antes de usá-lo; não execute uma migração manual no fluxo normal da aplicação.
 
 Para conceder acesso administrativo a uma conta, altere manualmente seu papel no banco apÃ³s verificar o email:
 
@@ -152,6 +144,13 @@ mvn test
 ## Limite de tentativas de login
 
 A API permite ate 10 tentativas de login por IP a cada 15 minutos. A tentativa seguinte recebe HTTP 429; um login bem-sucedido limpa o contador.
+
+### Ordem de rollout antes de produção
+
+1. Fazer backup dos bancos de origem e destino.
+2. Confirmar que as senhas do banco de destino já estão em BCrypt; se houver senhas legadas em texto puro, planejar uma conversão pontual com backup antes de conectar a API protegida.
+3. Configurar `JWT_SECRET` e as credenciais do banco no ambiente de hospedagem e implantar o backend protegido.
+4. Atualizar a URL da API no app Android, gerar uma nova build e validar login e chamadas autenticadas.
 
 ## Android
 

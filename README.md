@@ -56,7 +56,7 @@ FaÃ§a um backup do banco antes da primeira inicializaÃ§Ã£o com a nova vers
 
 ```powershell
 cd backend
-.\mvnw.cmd -DskipTests spring-boot:run -Dspring-boot.run.main-class=com.gamematch.backend.migration.PasswordMigrationApplication -Dspring-boot.run.arguments=--confirm-password-migration
+.\mvnw.cmd "-DskipTests" "spring-boot:run" "-Dspring-boot.run.main-class=com.gamematch.backend.migration.PasswordMigrationApplication" "-Dspring-boot.run.arguments=--confirm-password-migration"
 ```
 
 Execute somente depois de confirmar o backup e configure o mesmo `.env` usado pelo backend. NÃ£o rode essa migraÃ§Ã£o novamente apÃ³s a conversÃ£o.

@@ -38,7 +38,7 @@ class UserService {
 
   Future<List<dynamic>> getUsers() async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse(baseUrl)),
+      () => http.get(Uri.parse(baseUrl), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);

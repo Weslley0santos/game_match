@@ -60,7 +60,6 @@ class SwipeController {
     likedGames.add(game);
 
     await _ratingService.sendRating(
-      userId: userId,
       gameId: game.id!,
       type: "LIKE",
     );
@@ -75,7 +74,6 @@ class SwipeController {
     dislikedGames.add(game);
 
     await _ratingService.sendRating(
-      userId: userId,
       gameId: game.id!,
       type: "DISLIKE",
     );
@@ -90,7 +88,6 @@ class SwipeController {
     favoriteGames.add(game);
 
     await _ratingService.sendRating(
-      userId: userId,
       gameId: game.id!,
       type: "FAVORITE",
     );

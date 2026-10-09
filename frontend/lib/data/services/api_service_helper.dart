@@ -2,9 +2,15 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:http/http.dart' as http;
+import '../../core/session/user_session.dart';
 
 class ApiServiceHelper {
   static const Duration timeoutDuration = Duration(seconds: 10);
+
+  static Map<String, String> get authHeaders => {
+        if (UserSession.accessToken != null)
+          'Authorization': 'Bearer ${UserSession.accessToken}',
+      };
 
   static Future<http.Response> request(
     Future<http.Response> Function() action,
@@ -82,6 +88,8 @@ class ApiServiceHelper {
         return "Registro não encontrado.";
       case 409:
         return "Essa operação já existe ou entra em conflito com os dados atuais.";
+      case 429:
+        return "Muitas tentativas de login. Aguarde antes de tentar novamente.";
       case 500:
         return "Erro interno do servidor. Tente novamente mais tarde.";
       default:

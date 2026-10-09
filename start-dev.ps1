@@ -218,6 +218,17 @@ if ($missingDatabaseVariables.Count -gt 0) {
     throw "Preencha no .env as configurações obrigatórias do banco: $($missingDatabaseVariables -join ', ')."
 }
 
+$jwtSecret = Get-DotEnvValue -Lines $envLines -Name 'JWT_SECRET'
+try {
+    $jwtSecretBytes = [Convert]::FromBase64String($jwtSecret)
+}
+catch {
+    throw 'JWT_SECRET deve ser Base64 vÃ¡lida e conter pelo menos 32 bytes. Consulte o README.md.'
+}
+if ($jwtSecretBytes.Length -lt 32) {
+    throw 'JWT_SECRET deve conter pelo menos 32 bytes. Consulte o README.md.'
+}
+
 $datasourceUrl = Get-DotEnvValue -Lines $envLines -Name 'SPRING_DATASOURCE_URL'
 if ($datasourceUrl -notmatch '^jdbc:postgresql://(?<host>\[[^\]]+\]|[^:/?#]+)(?::(?<port>\d+))?/(?<database>[^?]+)') {
     throw 'SPRING_DATASOURCE_URL deve usar o formato jdbc:postgresql://host:porta/banco.'

@@ -9,15 +9,14 @@ class RatingService {
   final String baseUrl = "${ApiConfig.baseUrl}/ratings";
 
   Future<void> sendRating({
-    required int userId,
     required int gameId,
     required String type,
   }) async {
     final response = await ApiServiceHelper.request(
       () => http.post(
         Uri.parse(baseUrl),
-        headers: {"Content-Type": "application/json"},
-        body: jsonEncode({"userId": userId, "gameId": gameId, "type": type}),
+        headers: {"Content-Type": "application/json", ...ApiServiceHelper.authHeaders},
+        body: jsonEncode({"gameId": gameId, "type": type}),
       ),
     );
 
@@ -26,7 +25,7 @@ class RatingService {
 
   Future<List<dynamic>> getUserRatings(int userId) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/user/$userId")),
+      () => http.get(Uri.parse("$baseUrl/user/$userId"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);

@@ -6,6 +6,7 @@ import com.gamematch.backend.model.FriendshipStatus;
 import com.gamematch.backend.model.User;
 import com.gamematch.backend.repository.FriendshipRepository;
 import com.gamematch.backend.repository.UserRepository;
+import com.gamematch.backend.service.CurrentUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -18,18 +19,21 @@ public class FriendshipController {
 
     private final FriendshipRepository friendshipRepository;
     private final UserRepository userRepository;
+    private final CurrentUserService currentUser;
 
     public FriendshipController(
             FriendshipRepository friendshipRepository,
-            UserRepository userRepository
+            UserRepository userRepository,
+            CurrentUserService currentUser
     ) {
         this.friendshipRepository = friendshipRepository;
         this.userRepository = userRepository;
+        this.currentUser = currentUser;
     }
 
     @PostMapping
-    public FriendshipResponse addFriend(@RequestParam Long userId,
-                                        @RequestParam Long friendId) {
+    public FriendshipResponse addFriend(@RequestParam Long friendId) {
+        Long userId = currentUser.requireUserId();
 
         if (userId.equals(friendId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User cannot send a friendship request to himself");
@@ -54,6 +58,7 @@ public class FriendshipController {
 
     @GetMapping("/{userId}")
     public List<FriendshipResponse> getFriends(@PathVariable Long userId) {
+        requireCurrentUser(userId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -67,6 +72,7 @@ public class FriendshipController {
 
     @GetMapping("/{userId}/pending")
     public List<FriendshipResponse> getPendingRequests(@PathVariable Long userId) {
+        requireCurrentUser(userId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -84,6 +90,9 @@ public class FriendshipController {
         Friendship friendship = friendshipRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Friendship request not found"));
 
+        requireRecipient(friendship);
+        requirePending(friendship);
+
         friendship.setStatus(FriendshipStatus.ACCEPTED);
 
         return FriendshipResponse.from(friendshipRepository.save(friendship));
@@ -95,8 +104,27 @@ public class FriendshipController {
         Friendship friendship = friendshipRepository.findById(id)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Friendship request not found"));
 
+        requireRecipient(friendship);
+        requirePending(friendship);
+
         friendship.setStatus(FriendshipStatus.REJECTED);
 
         return FriendshipResponse.from(friendshipRepository.save(friendship));
+    }
+
+    private void requireCurrentUser(Long userId) {
+        if (!currentUser.requireUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own friendships");
+        }
+    }
+
+    private void requireRecipient(Friendship friendship) {
+        requireCurrentUser(friendship.getFriend().getId());
+    }
+
+    private void requirePending(Friendship friendship) {
+        if (friendship.getStatus() != FriendshipStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Friendship request is no longer pending");
+        }
     }
 }

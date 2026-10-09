@@ -11,7 +11,7 @@ class MatchService {
     required int friendId,
   }) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/$userId/$friendId")),
+      () => http.get(Uri.parse("$baseUrl/$userId/$friendId"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -19,7 +19,7 @@ class MatchService {
 
   Future<List<dynamic>> getCompatibleGames({required int userId}) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/users/$userId/games")),
+      () => http.get(Uri.parse("$baseUrl/users/$userId/games"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -30,7 +30,7 @@ class MatchService {
     required int gameId,
   }) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/users/$userId/games/$gameId/friends")),
+      () => http.get(Uri.parse("$baseUrl/users/$userId/games/$gameId/friends"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);

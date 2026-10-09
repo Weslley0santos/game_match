@@ -40,6 +40,36 @@ IGDB_CLIENT_ID=seu_client_id
 IGDB_CLIENT_SECRET=seu_client_secret
 ```
 
+Defina tambÃ©m `JWT_SECRET` no `.env`. Gere uma chave aleatÃ³ria com 32 bytes e codifique em Base64 no PowerShell:
+
+```powershell
+$bytes = [byte[]]::new(32)
+[System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+[Convert]::ToBase64String($bytes)
+```
+
+Copie o resultado para `JWT_SECRET`. O backend exige essa chave para iniciar; mantenha-a privada e estÃ¡vel, pois trocÃ¡-la invalida todas as sessÃµes ativas. O login retorna um token JWT com validade de 12 horas. Quando expirar, entre novamente.
+
+### MigraÃ§Ã£o das senhas existentes
+
+FaÃ§a um backup do banco antes da primeira inicializaÃ§Ã£o com a nova versÃ£o. Converta as senhas antigas em texto simples para BCrypt uma Ãºnica vez:
+
+```powershell
+cd backend
+.\mvnw.cmd -DskipTests spring-boot:run -Dspring-boot.run.main-class=com.gamematch.backend.migration.PasswordMigrationApplication -Dspring-boot.run.arguments=--confirm-password-migration
+```
+
+Execute somente depois de confirmar o backup e configure o mesmo `.env` usado pelo backend. NÃ£o rode essa migraÃ§Ã£o novamente apÃ³s a conversÃ£o.
+Depois de confirmar a contagem e testar o login, remova a ferramenta de migraÃ§Ã£o (`PasswordMigrationApplication` e `PasswordMigrationRunner`) do cÃ³digo antes do deploy normal.
+
+Para conceder acesso administrativo a uma conta, altere manualmente seu papel no banco apÃ³s verificar o email:
+
+```sql
+UPDATE users SET role = 'ADMIN' WHERE email = 'email-verificado@example.com';
+```
+
+Novas contas recebem apenas o papel `USER`. O papel `ADMIN` Ã© necessÃ¡rio para criar jogos e importar jogos da IGDB.
+
 Não compartilhe nem faça commit do `.env`. O arquivo já está ignorado pelo Git. O `README.md` e o `.env.example` contêm somente exemplos, nunca credenciais reais.
 
 ## Iniciar a aplicação
@@ -118,6 +148,10 @@ Confirme que `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` pertencem à mesma aplicaç
 cd backend
 mvn test
 ```
+
+## Limite de tentativas de login
+
+A API permite ate 10 tentativas de login por IP a cada 15 minutos. A tentativa seguinte recebe HTTP 429; um login bem-sucedido limpa o contador.
 
 ## Android
 

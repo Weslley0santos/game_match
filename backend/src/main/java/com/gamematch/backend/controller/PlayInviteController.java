@@ -10,6 +10,7 @@ import com.gamematch.backend.repository.FriendshipRepository;
 import com.gamematch.backend.repository.GameRepository;
 import com.gamematch.backend.repository.PlayInviteRepository;
 import com.gamematch.backend.repository.UserRepository;
+import com.gamematch.backend.service.CurrentUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,25 +31,28 @@ public class PlayInviteController {
     private final UserRepository userRepository;
     private final GameRepository gameRepository;
     private final FriendshipRepository friendshipRepository;
+    private final CurrentUserService currentUser;
 
     public PlayInviteController(
             PlayInviteRepository playInviteRepository,
             UserRepository userRepository,
             GameRepository gameRepository,
-            FriendshipRepository friendshipRepository
+            FriendshipRepository friendshipRepository,
+            CurrentUserService currentUser
     ) {
         this.playInviteRepository = playInviteRepository;
         this.userRepository = userRepository;
         this.gameRepository = gameRepository;
         this.friendshipRepository = friendshipRepository;
+        this.currentUser = currentUser;
     }
 
     @PostMapping
     public PlayInviteResponse create(
-            @RequestParam Long senderId,
             @RequestParam Long receiverId,
             @RequestParam Long gameId
     ) {
+        Long senderId = currentUser.requireUserId();
         if (senderId.equals(receiverId)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "User cannot send a play invite to himself");
         }
@@ -90,6 +94,7 @@ public class PlayInviteController {
 
     @GetMapping("/{userId}/received")
     public List<PlayInviteResponse> getReceived(@PathVariable Long userId) {
+        requireCurrentUser(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -101,6 +106,7 @@ public class PlayInviteController {
 
     @GetMapping("/{userId}/sent")
     public List<PlayInviteResponse> getSent(@PathVariable Long userId) {
+        requireCurrentUser(userId);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -113,6 +119,8 @@ public class PlayInviteController {
     @PutMapping("/{inviteId}/accept")
     public PlayInviteResponse accept(@PathVariable Long inviteId) {
         PlayInvite invite = findInvite(inviteId);
+        requireCurrentUser(invite.getReceiver().getId());
+        requirePending(invite);
         invite.setStatus(PlayInviteStatus.ACCEPTED);
 
         return PlayInviteResponse.from(playInviteRepository.save(invite));
@@ -121,6 +129,8 @@ public class PlayInviteController {
     @PutMapping("/{inviteId}/reject")
     public PlayInviteResponse reject(@PathVariable Long inviteId) {
         PlayInvite invite = findInvite(inviteId);
+        requireCurrentUser(invite.getReceiver().getId());
+        requirePending(invite);
         invite.setStatus(PlayInviteStatus.REJECTED);
 
         return PlayInviteResponse.from(playInviteRepository.save(invite));
@@ -129,5 +139,17 @@ public class PlayInviteController {
     private PlayInvite findInvite(Long inviteId) {
         return playInviteRepository.findById(inviteId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Play invite not found"));
+    }
+
+    private void requireCurrentUser(Long userId) {
+        if (!currentUser.requireUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access your own invitations");
+        }
+    }
+
+    private void requirePending(PlayInvite invite) {
+        if (invite.getStatus() != PlayInviteStatus.PENDING) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Play invite is no longer pending");
+        }
     }
 }

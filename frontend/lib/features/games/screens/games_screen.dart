@@ -140,11 +140,10 @@ class _GamesScreenState extends State<GamesScreen> {
   }
 
   Future<void> sendPlayInvite(dynamic friend) async {
-    final senderId = UserSession.userId;
     final gameId = selectedGameId;
     final receiverId = friend['friendId'];
 
-    if (senderId == null || gameId == null || receiverId == null) {
+    if (gameId == null || receiverId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Não foi possível enviar o convite.")),
       );
@@ -153,7 +152,6 @@ class _GamesScreenState extends State<GamesScreen> {
 
     try {
       await playInviteService.sendInvite(
-        senderId: senderId,
         receiverId: receiverId,
         gameId: gameId,
       );

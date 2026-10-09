@@ -7,11 +7,10 @@ class FriendshipService {
   final String baseUrl = "${ApiConfig.baseUrl}/friendships";
 
   Future<Map<String, dynamic>> sendRequest({
-    required int userId,
     required int friendId,
   }) async {
     final response = await ApiServiceHelper.request(
-      () => http.post(Uri.parse("$baseUrl?userId=$userId&friendId=$friendId")),
+      () => http.post(Uri.parse("$baseUrl?friendId=$friendId"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeMap(response);
@@ -19,7 +18,7 @@ class FriendshipService {
 
   Future<List<dynamic>> getAcceptedFriends(int userId) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/$userId")),
+      () => http.get(Uri.parse("$baseUrl/$userId"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -27,7 +26,7 @@ class FriendshipService {
 
   Future<List<dynamic>> getPendingRequests(int userId) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/$userId/pending")),
+      () => http.get(Uri.parse("$baseUrl/$userId/pending"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -35,7 +34,7 @@ class FriendshipService {
 
   Future<Map<String, dynamic>> acceptRequest(int friendshipId) async {
     final response = await ApiServiceHelper.request(
-      () => http.put(Uri.parse("$baseUrl/$friendshipId/accept")),
+      () => http.put(Uri.parse("$baseUrl/$friendshipId/accept"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeMap(response);
@@ -43,7 +42,7 @@ class FriendshipService {
 
   Future<Map<String, dynamic>> rejectRequest(int friendshipId) async {
     final response = await ApiServiceHelper.request(
-      () => http.put(Uri.parse("$baseUrl/$friendshipId/reject")),
+      () => http.put(Uri.parse("$baseUrl/$friendshipId/reject"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeMap(response);

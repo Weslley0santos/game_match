@@ -7,6 +7,7 @@ import com.gamematch.backend.service.IgdbGameService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -74,6 +75,7 @@ public class GameController {
 
     // POST /games/igdb/import?query=termo : busca jogos na IGDB e salva os novos no banco
     @PostMapping("/igdb/import")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<Game> importIgdbGames(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query must not be blank.");
@@ -128,6 +130,7 @@ public class GameController {
 
     // POST /games/igdb/import-one?query=termo : busca jogos na IGDB e salva apenas um resultado
     @PostMapping("/igdb/import-one")
+    @PreAuthorize("hasRole('ADMIN')")
     public Game importOneIgdbGame(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query must not be blank.");
@@ -172,6 +175,7 @@ public class GameController {
 
     // POST /games : cria um jogo
     @PostMapping
+    @PreAuthorize("hasRole('ADMIN')")
     public Game createGame(@RequestBody Game game) {
         return gameRepository.save(game);
     }

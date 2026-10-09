@@ -13,6 +13,7 @@ import com.gamematch.backend.repository.FriendshipRepository;
 import com.gamematch.backend.repository.GameRepository;
 import com.gamematch.backend.repository.RatingRepository;
 import com.gamematch.backend.repository.UserRepository;
+import com.gamematch.backend.service.CurrentUserService;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -32,17 +33,20 @@ public class MatchController {
     private final GameRepository gameRepository;
     private final UserRepository userRepository;
     private final FriendshipRepository friendshipRepository;
+    private final CurrentUserService currentUser;
 
     public MatchController(
             RatingRepository ratingRepository,
             GameRepository gameRepository,
             UserRepository userRepository,
-            FriendshipRepository friendshipRepository
+            FriendshipRepository friendshipRepository,
+            CurrentUserService currentUser
     ) {
         this.ratingRepository = ratingRepository;
         this.gameRepository = gameRepository;
         this.userRepository = userRepository;
         this.friendshipRepository = friendshipRepository;
+        this.currentUser = currentUser;
     }
 
     @GetMapping("/{userId}/{friendId}")
@@ -50,6 +54,8 @@ public class MatchController {
             @PathVariable Long userId,
             @PathVariable Long friendId
     ) {
+
+        requireCurrentUser(userId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -108,6 +114,8 @@ public class MatchController {
 
     @GetMapping("/users/{userId}/games")
     public List<CompatibleGameResponse> getCompatibleGames(@PathVariable Long userId) {
+
+        requireCurrentUser(userId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
@@ -183,6 +191,8 @@ public class MatchController {
             @PathVariable Long gameId
     ) {
 
+        requireCurrentUser(userId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
@@ -239,6 +249,12 @@ public class MatchController {
         }
 
         return ratingsByGame;
+    }
+
+    private void requireCurrentUser(Long userId) {
+        if (!currentUser.requireUserId().equals(userId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You can only access matches for your own account");
+        }
     }
 
     private RatingType getBestPositiveRating(Long userId, Long gameId) {

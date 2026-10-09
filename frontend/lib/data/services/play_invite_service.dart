@@ -7,15 +7,15 @@ class PlayInviteService {
   final String baseUrl = "${ApiConfig.baseUrl}/play-invites";
 
   Future<Map<String, dynamic>> sendInvite({
-    required int senderId,
     required int receiverId,
     required int gameId,
   }) async {
     final response = await ApiServiceHelper.request(
       () => http.post(
         Uri.parse(
-          "$baseUrl?senderId=$senderId&receiverId=$receiverId&gameId=$gameId",
+          "$baseUrl?receiverId=$receiverId&gameId=$gameId",
         ),
+        headers: ApiServiceHelper.authHeaders,
       ),
     );
 
@@ -24,7 +24,7 @@ class PlayInviteService {
 
   Future<List<dynamic>> getReceivedInvites(int userId) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/$userId/received")),
+      () => http.get(Uri.parse("$baseUrl/$userId/received"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -32,7 +32,7 @@ class PlayInviteService {
 
   Future<List<dynamic>> getSentInvites(int userId) async {
     final response = await ApiServiceHelper.request(
-      () => http.get(Uri.parse("$baseUrl/$userId/sent")),
+      () => http.get(Uri.parse("$baseUrl/$userId/sent"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeList(response);
@@ -40,7 +40,7 @@ class PlayInviteService {
 
   Future<Map<String, dynamic>> acceptInvite(int inviteId) async {
     final response = await ApiServiceHelper.request(
-      () => http.put(Uri.parse("$baseUrl/$inviteId/accept")),
+      () => http.put(Uri.parse("$baseUrl/$inviteId/accept"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeMap(response);
@@ -48,7 +48,7 @@ class PlayInviteService {
 
   Future<Map<String, dynamic>> rejectInvite(int inviteId) async {
     final response = await ApiServiceHelper.request(
-      () => http.put(Uri.parse("$baseUrl/$inviteId/reject")),
+      () => http.put(Uri.parse("$baseUrl/$inviteId/reject"), headers: ApiServiceHelper.authHeaders),
     );
 
     return ApiServiceHelper.decodeMap(response);

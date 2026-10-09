@@ -39,7 +39,8 @@ final class RequestLoggingFilter extends OncePerRequestFilter {
                     : HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
             throw exception;
         } finally {
-            if (response.getStatus() >= HttpServletResponse.SC_BAD_REQUEST) {
+            if (response.getStatus() >= HttpServletResponse.SC_BAD_REQUEST
+                    || status < HttpServletResponse.SC_BAD_REQUEST) {
                 status = response.getStatus();
             }
             String path = request.getRequestURI().replace('\r', '_').replace('\n', '_');

@@ -9,6 +9,7 @@ import com.gamematch.backend.model.User;
 import com.gamematch.backend.model.UserRole;
 import com.gamematch.backend.repository.UserRepository;
 import com.gamematch.backend.service.TokenService;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -50,7 +51,11 @@ public class UserController {
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(request.password()));
         user.setRole(UserRole.USER);
-        return UserResponse.from(repository.save(user));
+        try {
+            return UserResponse.from(repository.save(user));
+        } catch (DataIntegrityViolationException exception) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered", exception);
+        }
     }
 
     @PostMapping("/login")

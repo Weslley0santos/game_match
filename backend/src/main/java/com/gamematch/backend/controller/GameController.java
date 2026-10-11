@@ -65,6 +65,7 @@ public class GameController {
 
     // GET /games/igdb/search?query=termo : busca jogos na IGDB sem salvar no banco
     @GetMapping("/igdb/search")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<IgdbGameResponse> searchIgdbGames(@RequestParam(required = false) String query) {
         if (query == null || query.isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Query must not be blank.");

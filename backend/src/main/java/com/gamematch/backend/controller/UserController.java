@@ -18,10 +18,16 @@ import org.springframework.web.server.ResponseStatusException;
 import java.util.List;
 import java.time.Instant;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 @RestController
 @RequestMapping("/users")
 public class UserController {
+
+    private static final Pattern EMAIL_PATTERN = Pattern.compile(
+            "^[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+(?:\\.[A-Za-z0-9!#$%&'*+/=?^_`{|}~-]+)*"
+                    + "@(?:[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?\\.)+"
+                    + "[A-Za-z0-9](?:[A-Za-z0-9-]*[A-Za-z0-9])?$");
 
     private final UserRepository repository;
     private final PasswordEncoder passwordEncoder;
@@ -42,6 +48,9 @@ public class UserController {
         }
 
         String email = request.email().trim().toLowerCase(Locale.ROOT);
+        if (!isValidEmail(email)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A valid email is required");
+        }
         repository.findByEmailIgnoreCase(email).ifPresent(existingUser -> {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Email already registered");
         });
@@ -62,6 +71,10 @@ public class UserController {
     public AuthResponse login(@RequestBody LoginRequest request) {
         String email = request == null || request.email() == null ? "" : request.email().trim();
         String password = request == null || request.password() == null ? "" : request.password();
+        if (!isValidEmail(email) || password.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Email ou senha inválidos");
+        }
+
         User user = repository.findByEmailIgnoreCase(email).orElse(null);
 
         if (user == null || user.getPassword() == null || !passwordEncoder.matches(password, user.getPassword())) {
@@ -69,6 +82,10 @@ public class UserController {
         }
 
         return AuthResponse.from(user, tokenService.createToken(user), Instant.now().plus(TokenService.TOKEN_TTL));
+    }
+
+    private static boolean isValidEmail(String email) {
+        return EMAIL_PATTERN.matcher(email).matches();
     }
 
     @GetMapping

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../data/services/user_service.dart';
+import '../auth_validators.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -59,36 +60,6 @@ class _RegisterScreenState extends State<RegisterScreen> {
     }
   }
 
-  String? _validateName(String? value) {
-    if (value == null || value.trim().isEmpty) {
-      return "Informe o nome";
-    }
-
-    return null;
-  }
-
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? "";
-
-    if (email.isEmpty) {
-      return "Informe o email";
-    }
-
-    if (!email.contains("@")) {
-      return "Informe um email válido";
-    }
-
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return "Informe a senha";
-    }
-
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +84,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 const SizedBox(height: 32),
                 TextFormField(
                   controller: nameController,
-                  validator: _validateName,
+                  validator: AuthValidators.validateName,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Nome",
@@ -136,7 +107,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
+                  validator: AuthValidators.validateEmail,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Email",
@@ -159,7 +130,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 TextFormField(
                   controller: passwordController,
                   obscureText: true,
-                  validator: _validatePassword,
+                  validator: AuthValidators.validatePassword,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Senha",

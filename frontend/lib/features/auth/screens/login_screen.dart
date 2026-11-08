@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../data/services/user_service.dart';
 import '../../../core/session/user_session.dart';
+import '../auth_validators.dart';
 import 'register_screen.dart';
 import '../../navegation/widgets/main_navegation.dart';
 
@@ -60,28 +61,6 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  String? _validateEmail(String? value) {
-    final email = value?.trim() ?? "";
-
-    if (email.isEmpty) {
-      return "Informe o email";
-    }
-
-    if (!email.contains("@")) {
-      return "Informe um email válido";
-    }
-
-    return null;
-  }
-
-  String? _validatePassword(String? value) {
-    if (value == null || value.isEmpty) {
-      return "Informe a senha";
-    }
-
-    return null;
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -106,7 +85,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: emailController,
                   keyboardType: TextInputType.emailAddress,
-                  validator: _validateEmail,
+                  validator: AuthValidators.validateEmail,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Email",
@@ -129,7 +108,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 TextFormField(
                   controller: passwordController,
                   obscureText: true,
-                  validator: _validatePassword,
+                  validator: AuthValidators.validatePassword,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
                     labelText: "Senha",

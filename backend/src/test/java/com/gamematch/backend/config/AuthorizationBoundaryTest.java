@@ -2,6 +2,7 @@ package com.gamematch.backend.config;
 
 import com.gamematch.backend.controller.FriendshipController;
 import com.gamematch.backend.controller.GameController;
+import com.gamematch.backend.controller.MatchController;
 import com.gamematch.backend.controller.PlayInviteController;
 import com.gamematch.backend.controller.RatingController;
 import com.gamematch.backend.model.Friendship;
@@ -39,6 +40,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -47,6 +49,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(controllers = {
         FriendshipController.class,
         GameController.class,
+        MatchController.class,
         PlayInviteController.class,
         RatingController.class
 })
@@ -111,6 +114,24 @@ class AuthorizationBoundaryTest {
     }
 
     @Test
+    void blocksListingAnotherUsersRatings() throws Exception {
+        mockMvc.perform(get("/ratings/user/2").header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(status().isForbidden());
+
+        verify(ratingRepository, never()).findByUserId(2L);
+    }
+
+    @Test
+    void blocksDeletingAnotherUsersRating() throws Exception {
+        when(ratingRepository.findById(10L)).thenReturn(Optional.of(new Rating(2L, 20L, RatingType.LIKE)));
+
+        mockMvc.perform(delete("/ratings/10").header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(status().isForbidden());
+
+        verify(ratingRepository, never()).delete(any(Rating.class));
+    }
+
+    @Test
     void blocksReadingAnotherUsersFriendships() throws Exception {
         mockMvc.perform(get("/friendships/2").header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andExpect(status().isForbidden());
@@ -122,6 +143,18 @@ class AuthorizationBoundaryTest {
         when(friendshipRepository.findById(10L)).thenReturn(Optional.of(friendship));
 
         mockMvc.perform(put("/friendships/10/accept")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(status().isForbidden());
+
+        verify(friendshipRepository, never()).save(any(Friendship.class));
+    }
+
+    @Test
+    void blocksRejectingFriendshipRequestForAnotherUser() throws Exception {
+        Friendship friendship = new Friendship(user(3L), user(2L), FriendshipStatus.PENDING);
+        when(friendshipRepository.findById(10L)).thenReturn(Optional.of(friendship));
+
+        mockMvc.perform(put("/friendships/10/reject")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
                 .andExpect(status().isForbidden());
 
@@ -146,6 +179,58 @@ class AuthorizationBoundaryTest {
                 .andExpect(status().isForbidden());
 
         verify(playInviteRepository, never()).save(any(PlayInvite.class));
+    }
+
+    @Test
+    void blocksRejectingPlayInviteForAnotherUser() throws Exception {
+        PlayInvite invite = new PlayInvite(
+                user(3L), user(2L), new Game("Game", "Genre", "", "", 1L, List.of()), PlayInviteStatus.PENDING
+        );
+        when(playInviteRepository.findById(10L)).thenReturn(Optional.of(invite));
+
+        mockMvc.perform(put("/play-invites/10/reject")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(status().isForbidden());
+
+        verify(playInviteRepository, never()).save(any(PlayInvite.class));
+    }
+
+    @Test
+    void blocksReadingAnotherUsersSentInvites() throws Exception {
+        mockMvc.perform(get("/play-invites/2/sent")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                .andExpect(status().isForbidden());
+
+        verify(playInviteRepository, never()).findBySender(any());
+    }
+
+    @Test
+    void blocksCompatibilityQueriesForAnotherUserAcrossMatchRoutes() throws Exception {
+        for (String path : List.of(
+                "/matches/2/3",
+                "/matches/users/2/games",
+                "/matches/users/2/games/10/friends"
+        )) {
+            mockMvc.perform(get(path).header(HttpHeaders.AUTHORIZATION, "Bearer user-token"))
+                    .andExpect(status().isForbidden());
+        }
+
+        verify(userRepository, never()).findById(any());
+        verify(ratingRepository, never()).findByUserIdAndTypeIn(any(), any());
+    }
+
+    @Test
+    void rejectsAnonymousRequestsAcrossOtherProtectedFlows() throws Exception {
+        mockMvc.perform(post("/ratings")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"gameId\":10,\"type\":\"LIKE\"}"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/friendships").param("friendId", "2"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/play-invites").param("receiverId", "2").param("gameId", "10"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/matches/1/2"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

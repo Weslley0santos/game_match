@@ -4,7 +4,7 @@
 
 - **Fato observado:** aparece em arquivo, configuração ou documentação inspecionada.
 - **Não confirmado:** não foi possível concluir apenas pela inspeção; não significa necessariamente que não exista fora do repositório ou em ambiente externo.
-- Execução mais recente: `mvn test` passou com 60 testes no PostgreSQL isolado `game_match_test`; Flutter passou com 14 testes. Flyway aplicou V1 e V2 nesse banco. A falha anterior ocorreu ao usar o banco local `game_match`, que não foi alterado.
+- Execução mais recente: em 2026-11-17, `.\test.ps1` passou com 60 testes Maven e 59 Flutter, sem falhas ou erros. O Maven apontou para o PostgreSQL isolado `game_match_test`; o banco `game_match` não foi usado.
 
 ## Tecnologias e organização
 
@@ -17,7 +17,7 @@
 
 ## Testes encontrados
 
-### Frontend — 5 arquivos, 14 testes
+### Frontend — 7 arquivos, 59 testes
 
 | Arquivo | Casos observados |
 | --- | --- |
@@ -26,8 +26,10 @@
 | `frontend/test/widget_test.dart` | 1 smoke test verifica que o app abre na tela de login e exibe título, campos de email/senha e botão Entrar. Passou como parte da suíte Flutter executada com acesso elevado. |
 | `frontend/test/auth_validation_test.dart` | 6 testes unitários: nome obrigatório e trim, email ausente/malformado/normalizado e senha obrigatória sem regra de tamanho inventada. |
 | `frontend/test/auth_form_validation_test.dart` | 4 testes de widget: campos obrigatórios e email malformado nas telas de login e cadastro. |
+| `frontend/test/service_contract_test.dart` | 39 testes: contratos HTTP de avaliações, amizades, compatibilidade e convites; valida método, caminho/query, autenticação, payload, respostas, erros HTTP e falha de transporte com `MockClient`. |
+| `frontend/test/swipe_controller_test.dart` | 6 testes: filtra avaliações anteriores, reinicia incluindo avaliados, envia os três tipos de avaliação e preserva estado após falha de gravação para `LIKE`, `DISLIKE` e `FAVORITE`. |
 
-Tipos confirmados: testes de widget/apresentação e testes unitários puros dos validadores. Não identifiquei teste de serviço HTTP, unidade de estado/controller, integração ou E2E Flutter entre os arquivos encontrados.
+Tipos confirmados: testes de widget/apresentação, testes unitários de validadores e controller e contratos HTTP simulados. Não há integração real ou E2E Flutter identificada.
 
 ### Backend — 12 arquivos, 60 métodos de teste anotados com `@Test`
 
@@ -52,13 +54,13 @@ Tipos confirmados: testes de unidade com mocks, teste de contexto Spring e teste
 
 | Ferramenta/comando | Evidência e status |
 | --- | --- |
-| `.\test.ps1` | Comando padrão na raiz: executa `mvn test` com a URL de banco temporariamente apontada a `game_match_test` e depois `flutter test --no-pub --verbose`; restaura as variáveis de ambiente ao terminar. Requer `.env` com usuário/senha PostgreSQL e o banco de teste criado. |
+| `.\test.ps1` | Comando canônico na raiz: executa Maven Wrapper com `--batch-mode --no-transfer-progress test` em `game_match_test` e depois `flutter test --no-pub`; restaura variáveis de ambiente e informa o código de saída de cada suíte. Requer `.env` com credenciais PostgreSQL e o banco de teste criado. |
 | JUnit Jupiter | Importado pelos testes Java; executado pelo ciclo de testes Maven. |
 | Mockito / AssertJ | Usados diretamente nos testes Java inspecionados. |
 | Spring MockMvc | Usado pelos testes de segurança/autorização para requisições simuladas. |
-| `mvn test` | Documentado no `README.md` da raiz para execução em `backend/`. Última execução: 60 testes, 0 falhas/erros, `BUILD SUCCESS`, com `SPRING_DATASOURCE_URL` temporariamente apontado a `game_match_test`. |
+| `mvnw.cmd --batch-mode --no-transfer-progress test` | Comando do backend pelo Maven Wrapper; usado também pelo comando agregado. A URL do processo deve apontar para `game_match_test`; o script agregado configura isso. Última execução: 60 testes, 0 falhas, 0 erros, exit code 0. |
 | Testes direcionados dos fluxos (`-Dtest=RatingControllerTest,FriendshipControllerTest,MatchControllerTest,PlayInviteControllerTest,GameControllerTest,AuthorizationBoundaryTest`) | Executados em `backend/`: 41 testes, 0 falhas, 0 erros. Cobrem avaliações, amizades, compatibilidade, convites, catálogo e isolamento. |
-| `flutter_test` / `flutter test --no-pub --verbose` | Pacote `flutter_test` declarado no `frontend/pubspec.yaml`. Suíte completa executada com acesso elevado: 14 testes, 0 falhas, 0 erros. No sandbox padrão, a chamada direta falhou ao abrir `C:\flutter\bin\cache\lockfile`; `AGENTS.md` registra a execução com elevação necessária neste ambiente. |
+| `flutter_test` / `flutter test --no-pub` | Pacote `flutter_test` declarado no `frontend/pubspec.yaml`. Última execução agregada: 59 testes, todos passaram, exit code 0; requer acesso de escrita ao cache `C:\flutter\bin\cache\lockfile` neste ambiente. |
 | `flutter analyze` | Citado em comentário de `frontend/analysis_options.yaml`; comando do analisador estático, não da suíte de testes. Não executado. |
 | `start-dev.ps1` | Script presente para iniciar o ambiente de desenvolvimento, não uma suíte de testes. |
 
@@ -73,15 +75,15 @@ Tipos confirmados: testes de unidade com mocks, teste de contexto Spring e teste
 ## Lacunas e itens não confirmados
 
 - O cadastro/login tem testes Flutter para mensagens e validadores, mas não há teste Flutter do percurso completo até API, persistência, sessão e navegação após login.
-- Os fluxos de avaliação/swipe, amizades, compatibilidade, convites e administração têm testes de controller no backend; interação e estados correspondentes nas telas Flutter ainda não estão cobertos.
+- Swipe tem testes unitários do controller; serviços Flutter de avaliações, amizades, compatibilidade e convites têm contratos HTTP simulados. Testes de widget/interação Flutter desses fluxos e do catálogo/admin ainda estão pendentes.
 - Há testes unitários dos controllers para regras de avaliação, amizade, compatibilidade e convites e testes MockMvc para suas fronteiras de autorização. Integração real com banco e cobertura das telas Flutter desses fluxos continuam pendentes.
-- Fluxos de sucesso/erro da interface e interação real frontend/API não aparecem cobertos pelos testes listados.
+- Fluxos completos de sucesso/erro da interface e interação real frontend/API não aparecem cobertos; os contratos HTTP usam `MockClient`.
 - Flyway aplicou as migrações V1 e V2 no PostgreSQL isolado `game_match_test`, e o teste de contexto Spring passou; testes de persistência real dos fluxos funcionais continuam não confirmados. A integração real com IGDB também não foi executada.
 - Testes instrumentados Android, E2E e execução em navegador **não confirmados**.
 - Não há arquivos de workflow de CI sob `.github` identificados; há apenas diretório de configuração de modernização Java. Execução externa de CI **não confirmada**.
 - Playwright, Cypress e configuração equivalente **não encontrados**; não se presume seu uso.
-- O README documenta `mvn test`, mas não documenta o comando da suíte Flutter; `flutter test` deriva do executor configurado.
-- As 14 verificações Flutter passaram. Os 60 testes Maven também passaram quando a URL foi direcionada explicitamente ao banco isolado `game_match_test`; veja `quality/reports/2026-10-25-suite-completa.md`.
+- O README documenta `.\test.ps1` como comando agregado e os comandos direcionados por stack.
+- O comando agregado final passou: 60 testes Maven e 59 Flutter, 0 falhas/erros; o backend foi direcionado para `game_match_test`.
 - Percentual de cobertura e estabilidade/flakiness **não confirmados**; não foi gerado relatório de cobertura nem feita execução repetida para medir flakiness.
 
 

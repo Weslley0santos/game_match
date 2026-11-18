@@ -54,11 +54,12 @@ Os resultados devem ser associados a critérios verificáveis, sem declarar apro
 
 O SDK selecionado é `C:\flutter`, fora da raiz gravável do projeto. A suíte foi aprovada quando executada com acesso elevado; no sandbox padrão, o launcher pode falhar ao acessar `C:\flutter\bin\cache\lockfile`. Para execuções de agentes, use `flutter test --no-pub` com `sandbox_permissions: require_escalated` e justificativa para escrita no cache do SDK. O sinalizador `--no-pub` evita resolver/atualizar dependências do projeto. Se a elevação for negada, registre bloqueio ambiental em vez de falha de teste.
 
-+## Comandos conhecidos
+## Comandos conhecidos
 
-- Backend: `mvn test` em `backend/`, explicitamente documentado no README da raiz.
-- Frontend: `flutter test` em `frontend/` é o comando padrão do executor `flutter_test` presente nas dependências, mas não foi encontrado documentado como comando de projeto.
-- `flutter analyze` é citado nos comentários de `frontend/analysis_options.yaml` como comando possível do analisador; não é teste automatizado.
+- **Comando agregado canônico:** `.\test.ps1` na raiz do projeto. Executa `backend/mvnw.cmd --batch-mode --no-transfer-progress test` e depois `flutter test --no-pub` em `frontend/`, mantendo o backend apontado para `game_match_test`.
+- **Maven direcionado:** antes de executar `.\mvnw.cmd --batch-mode --no-transfer-progress test` em `backend/`, configurar `SPRING_DATASOURCE_URL` como `jdbc:postgresql://localhost:5432/game_match_test`; `.\test.ps1` configura isso automaticamente.
+- **Flutter direcionado:** `flutter test --no-pub` em `frontend/`.
+- `flutter analyze` é uma análise estática separada; não faz parte da suíte agregada.
 
-Nenhum dos comandos foi executado para elaborar este plano.
+O comando agregado passou em 2026-11-17: 60 testes Maven e 59 Flutter, sem falhas ou erros. O resultado está detalhado em `test-inventory.md`.
 

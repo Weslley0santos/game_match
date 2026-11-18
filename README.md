@@ -134,12 +134,41 @@ O script não encerra processos desconhecidos. Feche o programa que está usando
 
 Confirme que `IGDB_CLIENT_ID` e `IGDB_CLIENT_SECRET` pertencem à mesma aplicação cadastrada na Twitch e reinicie o ambiente.
 
-## Executar os testes do backend
+## Testes e verificações
+
+Na raiz do projeto, execute a suíte completa com um único comando:
+
+```powershell
+.\test.ps1
+```
+
+O comando executa o Maven Wrapper usando o banco isolado `game_match_test` e, em seguida, os testes Flutter com `--no-pub`. O banco `game_match_test` precisa existir e o `.env` precisa conter as credenciais locais do PostgreSQL. O script restaura as variáveis de ambiente ao terminar, executa as duas suítes mesmo se uma delas falhar e retorna código diferente de zero se qualquer suíte falhar. O banco de desenvolvimento `game_match` não é usado.
+
+Para executar somente os testes Flutter:
+
+```powershell
+cd frontend
+flutter test --no-pub
+```
+
+Se precisar executar o Maven diretamente, force a URL para o banco de teste antes de iniciar a suíte. O comando agregado já faz isso e é a opção recomendada:
 
 ```powershell
 cd backend
-mvn test
+$previousUrl = [Environment]::GetEnvironmentVariable('SPRING_DATASOURCE_URL', 'Process')
+$env:SPRING_DATASOURCE_URL = 'jdbc:postgresql://localhost:5432/game_match_test'
+try {
+    .\mvnw.cmd --batch-mode --no-transfer-progress test
+} finally {
+    if ($null -eq $previousUrl) {
+        Remove-Item Env:SPRING_DATASOURCE_URL -ErrorAction SilentlyContinue
+    } else {
+        $env:SPRING_DATASOURCE_URL = $previousUrl
+    }
+}
 ```
+
+O comando agregado é o caminho recomendado para verificar o projeto inteiro. Ele não executa análise estática nem testes instrumentados/E2E.
 
 ## Limite de tentativas de login
 

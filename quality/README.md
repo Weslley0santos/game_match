@@ -19,9 +19,13 @@ Este documento registra a estrutura atual dos testes do Game Match, os fluxos pr
 | --- | --- |
 | `frontend/test/game_card_test.dart` | Verifica que a capa da IGDB usa resolução alta e que a imagem é exibida inteira (`BoxFit.contain`). |
 | `frontend/test/games_screen_test.dart` | Verifica o cabeçalho do detalhe do jogo, incluindo título, contagem de amigos interessados/favoritos e URL da imagem. |
-| `frontend/test/widget_test.dart` | Teste padrão de contador do template Flutter. A expectativa de contador não parece corresponder à aplicação Game Match e deve ser revisada antes de ser considerada uma verificação útil. |
+| `frontend/test/widget_test.dart` | Smoke test confirma que o app abre na tela de login. |
+| `frontend/test/auth_validation_test.dart` | Valida regras de nome, email e senha. |
+| `frontend/test/auth_form_validation_test.dart` | Verifica validações visíveis nos formulários de login e cadastro. |
+| `frontend/test/service_contract_test.dart` | Verifica contratos HTTP autenticados de avaliações, amizades, compatibilidade e convites com cliente simulado. |
+| `frontend/test/swipe_controller_test.dart` | Valida filtro de jogos avaliados, tipos de avaliação, avanço após sucesso e preservação do estado após falha. |
 
-Os testes atuais são testes de apresentação de widgets. Não encontrei testes automatizados para autenticação, navegação, avaliações, tela de amigos, convites ou chamadas HTTP.
+Os testes Flutter incluem widgets, validação, contratos HTTP simulados e regras do controller de swipe. Ainda não há cobertura de integração real com a API/PostgreSQL nem testes de widgets para todos os fluxos de amizades, compatibilidade, convites e administração.
 
 ### Backend Spring Boot
 
@@ -29,11 +33,18 @@ Os testes atuais são testes de apresentação de widgets. Não encontrei testes
 | --- | --- |
 | `BackendApplicationTests.java` | Confirma que o contexto da aplicação inicia. |
 | `controller/UserControllerTest.java` | Confirma que conflito de email ao persistir cadastro é convertido em HTTP 409. |
+| `controller/UserAuthenticationFlowTest.java` | Exercita cadastro, login e uso de JWT em requisições HTTP. |
 | `controller/GameControllerTest.java` | Confirma que importação individual prefere jogo principal a um port homônimo e que importação em lote exclui jogos que não são principais. |
+| `controller/RatingControllerTest.java` | Valida criação/atualização de avaliações, dados inválidos e bloqueio de avaliação de outra conta. |
+| `controller/FriendshipControllerTest.java` | Valida solicitações, duplicatas, aceite/rejeição e consulta de amizades. |
+| `controller/MatchControllerTest.java` | Valida amizade aceita, interesses compartilhados, prioridade, ordenação e exclusão de dislikes. |
+| `controller/PlayInviteControllerTest.java` | Valida convite entre amigos aceitos, duplicatas, estados pendentes e respostas. |
 | `service/IgdbGameServiceTest.java` | Confirma que a consulta à IGDB filtra jogos principais e versões na origem. |
 | `config/IgdbPropertiesTest.java` | Confirma a limpeza de espaços e aspas nas credenciais da IGDB. |
 | `config/GameSearchSecurityTest.java` | Confirma que busca IGDB rejeita anônimo (401), rejeita usuário comum (403) e permite administrador (200). |
 | `config/AuthorizationBoundaryTest.java` | Verifica autenticação e limites de acesso por usuário em avaliações, amizades e convites, além de restringir criação/importação de jogos a administradores. |
+
+Os testes do backend cobrem as regras principais de domínio e autorização com JUnit/Mockito/MockMvc. Os controller tests usam dependências simuladas; não equivalem a integração completa de persistência em PostgreSQL.
 
 ## Fluxos críticos do produto
 
@@ -47,7 +58,9 @@ Os testes atuais são testes de apresentação de widgets. Não encontrei testes
 
 ## Critérios de sucesso
 
-- Testes automatizados devem passar nos executores já adotados pelo projeto: `flutter test` em `frontend/` e `mvn test` em `backend/`.
+- O comando agregado canônico é `.\test.ps1` na raiz; executa Maven no banco isolado `game_match_test` e Flutter com `--no-pub`.
+- Para um ciclo direcionado de Maven, `SPRING_DATASOURCE_URL` precisa apontar explicitamente para `game_match_test`; o comando agregado já faz isso. Veja no README raiz como executar o wrapper diretamente com essa proteção.
+- Para um ciclo direcionado Flutter, usar `flutter test --no-pub` em `frontend/`.
 - Casos de acesso sem autenticação devem retornar 401 nas rotas protegidas; usuários autenticados sem autorização devem receber 403.
 - Operações de escrita recusadas por autorização não devem persistir alterações.
 - Regras de domínio devem cobrir resultados válidos e limites relevantes, como convite apenas entre amizades aceitas e importação apenas de jogos principais.
@@ -56,24 +69,24 @@ Os testes atuais são testes de apresentação de widgets. Não encontrei testes
 
 ## Lacunas iniciais observadas
 
-- Não há testes Flutter identificados para telas/fluxos de login, cadastro, swipe/avaliação, amizades ou convites.
-- Não há testes dedicados identificados para os controladores de avaliações, amizades, compatibilidade e convites; parte das fronteiras de autorização desses recursos é coberta por `AuthorizationBoundaryTest`.
-- O teste padrão de contador do Flutter parece obsoleto para o aplicativo e pode falhar por não refletir a interface atual.
+- Ainda faltam testes Flutter de widget/interação para telas de amizades, compatibilidade, convites e administração; cobertura HTTP dessas telas não é substituída pelos testes de contrato dos serviços.
+- Os testes de controller das regras principais usam dependências simuladas; falta validar persistência funcional real com PostgreSQL isolado.
 - Não foi localizada configuração de cobertura. Portanto, este documento não informa percentual de cobertura.
-- Os testes não foram executados durante a elaboração deste documento; o estado de aprovação da suíte permanece desconhecido.
+- A aprovação da suíte deve ser baseada na execução registrada em `quality/test-inventory.md`, não presumida pela existência dos testes.
 
 ## Comandos de execução
 
-Na pasta `frontend/`:
+Na raiz do projeto, para validar as duas stacks:
 
 ```powershell
-flutter test
+.\test.ps1
 ```
 
-Na pasta `backend/`:
+Execução separada do Flutter, quando necessária:
 
 ```powershell
-mvn test
+cd frontend
+flutter test --no-pub
 ```
 
-Os comandos acima são referências documentadas; não foram executados nesta análise.
+O backend requer PostgreSQL configurado. O comando agregado aponta para o banco isolado `game_match_test` e não usa o banco de desenvolvimento. Não execute o wrapper Maven sem definir essa URL isolada.

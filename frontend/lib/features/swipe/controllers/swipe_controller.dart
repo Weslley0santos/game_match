@@ -57,13 +57,12 @@ class SwipeController {
     final game = currentGame;
     if (game == null) return;
 
-    likedGames.add(game);
-
     await _ratingService.sendRating(
       gameId: game.id!,
       type: "LIKE",
     );
 
+    likedGames.add(game);
     nextGame();
   }
 
@@ -71,13 +70,12 @@ class SwipeController {
     final game = currentGame;
     if (game == null) return;
 
-    dislikedGames.add(game);
-
     await _ratingService.sendRating(
       gameId: game.id!,
       type: "DISLIKE",
     );
 
+    dislikedGames.add(game);
     nextGame();
   }
 
@@ -85,13 +83,12 @@ class SwipeController {
     final game = currentGame;
     if (game == null) return;
 
-    favoriteGames.add(game);
-
     await _ratingService.sendRating(
       gameId: game.id!,
       type: "FAVORITE",
     );
 
+    favoriteGames.add(game);
     nextGame();
   }
 

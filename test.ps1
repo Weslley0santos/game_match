@@ -76,15 +76,21 @@ try {
 
         Write-Host "Executando Maven: .\mvnw.cmd --batch-mode --no-transfer-progress test (banco $testDatabaseName)..." -ForegroundColor Cyan
         Push-Location $backendPath
+        $previousErrorActionPreference = $ErrorActionPreference
         try {
-            & $mavenWrapperPath --batch-mode --no-transfer-progress test
+            # Windows PowerShell 5.1 can turn native stderr warnings into terminating errors.
+            # Keep setup failures strict, but use each process exit code as the test result.
+            $ErrorActionPreference = 'Continue'
+            $mavenOutput = & $mavenWrapperPath --batch-mode --no-transfer-progress test 2>&1
             $mavenExitCode = $LASTEXITCODE
+            $mavenOutput | ForEach-Object { Write-Host $_ }
         }
         catch {
             Write-Host "Falha ao iniciar os testes do Maven: $($_.Exception.Message)" -ForegroundColor Red
             $mavenExitCode = 1
         }
         finally {
+            $ErrorActionPreference = $previousErrorActionPreference
             Pop-Location
         }
     }
@@ -95,15 +101,19 @@ try {
     else {
         Write-Host 'Executando Flutter: flutter test --no-pub...' -ForegroundColor Cyan
         Push-Location $frontendPath
+        $previousErrorActionPreference = $ErrorActionPreference
         try {
-            & flutter test --no-pub
+            $ErrorActionPreference = 'Continue'
+            $flutterOutput = & flutter test --no-pub 2>&1
             $flutterExitCode = $LASTEXITCODE
+            $flutterOutput | ForEach-Object { Write-Host $_ }
         }
         catch {
             Write-Host "Falha ao iniciar os testes do Flutter: $($_.Exception.Message)" -ForegroundColor Red
             $flutterExitCode = 1
         }
         finally {
+            $ErrorActionPreference = $previousErrorActionPreference
             Pop-Location
         }
     }

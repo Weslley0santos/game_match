@@ -18,14 +18,15 @@ Este documento registra a estrutura atual dos testes do Game Match, os fluxos pr
 | Arquivo | Escopo atual |
 | --- | --- |
 | `frontend/test/game_card_test.dart` | Verifica que a capa da IGDB usa resolução alta e que a imagem é exibida inteira (`BoxFit.contain`). |
-| `frontend/test/games_screen_test.dart` | Verifica o cabeçalho do detalhe do jogo, incluindo título, contagem de amigos interessados/favoritos e URL da imagem. |
+| `frontend/test/games_screen_test.dart` | Verifica o cabeçalho, estados de compatibilidade e convites, seleção de jogo, amigos interessados, resposta/envio de convites, erros de ação, lista de enviados preenchida e fallback de imagem. |
+| `frontend/test/friends_screen_test.dart` | Verifica carregamento/erro/vazio, busca, envio e resposta a solicitações, jogos em comum e sucesso/falha ao convidar. |
 | `frontend/test/widget_test.dart` | Smoke test confirma que o app abre na tela de login. |
 | `frontend/test/auth_validation_test.dart` | Valida regras de nome, email e senha. |
 | `frontend/test/auth_form_validation_test.dart` | Verifica validações visíveis nos formulários de login e cadastro. |
 | `frontend/test/service_contract_test.dart` | Verifica contratos HTTP autenticados de avaliações, amizades, compatibilidade e convites com cliente simulado. |
 | `frontend/test/swipe_controller_test.dart` | Valida filtro de jogos avaliados, tipos de avaliação, avanço após sucesso e preservação do estado após falha. |
 
-Os testes Flutter incluem widgets, validação, contratos HTTP simulados e regras do controller de swipe. Ainda não há cobertura de integração real com a API/PostgreSQL nem testes de widgets para todos os fluxos de amizades, compatibilidade, convites e administração.
+Os testes Flutter incluem widgets, validação, contratos HTTP simulados e regras do controller de swipe. A cobertura de widget para amizades, compatibilidade e convites foi adicionada; não foi localizada tela administrativa Flutter. Ainda não há integração real com a API/PostgreSQL nem percurso completo de autenticação/navegação coberto no cliente.
 
 ### Backend Spring Boot
 
@@ -69,8 +70,8 @@ Os testes do backend cobrem as regras principais de domínio e autorização com
 
 ## Lacunas iniciais observadas
 
-- Ainda faltam testes Flutter de widget/interação para telas de amizades, compatibilidade, convites e administração; cobertura HTTP dessas telas não é substituída pelos testes de contrato dos serviços.
-- Os testes de controller das regras principais usam dependências simuladas; falta validar persistência funcional real com PostgreSQL isolado.
+- Ainda faltam testes de interação visual do swipe e do percurso completo de autenticação/navegação. Não foi encontrada interface Flutter para administração do catálogo; confirmar se esse fluxo será criado antes de planejar testes de tela para ele.
+- Persistência e migrações principais são verificadas por `PostgresPersistenceIntegrationTest` em `game_match_test`, com rollback por teste. A tabela `ratings` não possui FKs para usuários/jogos nas migrações atuais; essa lacuna está registrada para avaliação separada.
 - Não foi localizada configuração de cobertura. Portanto, este documento não informa percentual de cobertura.
 - A aprovação da suíte deve ser baseada na execução registrada em `quality/test-inventory.md`, não presumida pela existência dos testes.
 

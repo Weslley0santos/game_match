@@ -4,7 +4,7 @@
 
 - **Fato observado:** aparece em arquivo, configuração ou documentação inspecionada.
 - **Não confirmado:** não foi possível concluir apenas pela inspeção; não significa necessariamente que não exista fora do repositório ou em ambiente externo.
-- Execução mais recente: em 2026-11-17, `.\test.ps1` passou com 60 testes Maven e 59 Flutter, sem falhas ou erros. O Maven apontou para o PostgreSQL isolado `game_match_test`; o banco `game_match` não foi usado.
+- Execução mais recente: em 2026-11-18, `.\test.ps1` passou com 70 testes Maven e 83 Flutter, sem falhas ou erros. O Maven apontou para o PostgreSQL isolado `game_match_test`; o banco `game_match` não foi usado.
 
 ## Tecnologias e organização
 
@@ -17,12 +17,13 @@
 
 ## Testes encontrados
 
-### Frontend — 7 arquivos, 59 testes
+### Frontend — 8 arquivos de teste, 83 testes
 
 | Arquivo | Casos observados |
 | --- | --- |
 | `frontend/test/game_card_test.dart` | 2 casos: URL de capa IGDB convertida para resolução alta e imagem configurada com `BoxFit.contain`. |
-| `frontend/test/games_screen_test.dart` | 1 caso: cabeçalho apresenta título, contagem de amigos interessados/favoritos e imagem do jogo. |
+| `frontend/test/games_screen_test.dart` | 14 casos: cabeçalho; estados de compatibilidade e convites; amigos interessados; aceitar/recusar e enviar convites; fallback da capa. |
+| `frontend/test/friends_screen_test.dart` | 11 casos: carregamento/erro/vazio, busca, envio/falha e aceite/recusa de solicitações, compatibilidade e envio de convite. |
 | `frontend/test/widget_test.dart` | 1 smoke test verifica que o app abre na tela de login e exibe título, campos de email/senha e botão Entrar. Passou como parte da suíte Flutter executada com acesso elevado. |
 | `frontend/test/auth_validation_test.dart` | 6 testes unitários: nome obrigatório e trim, email ausente/malformado/normalizado e senha obrigatória sem regra de tamanho inventada. |
 | `frontend/test/auth_form_validation_test.dart` | 4 testes de widget: campos obrigatórios e email malformado nas telas de login e cadastro. |
@@ -31,7 +32,7 @@
 
 Tipos confirmados: testes de widget/apresentação, testes unitários de validadores e controller e contratos HTTP simulados. Não há integração real ou E2E Flutter identificada.
 
-### Backend — 12 arquivos, 60 métodos de teste anotados com `@Test`
+### Backend — 15 arquivos, 70 métodos de teste anotados com `@Test`
 
 | Arquivo | Casos observados |
 | --- | --- |
@@ -47,26 +48,33 @@ Tipos confirmados: testes de widget/apresentação, testes unitários de validad
 | `config/IgdbPropertiesTest.java` | 1: remoção de espaços e aspas das credenciais IGDB. |
 | `config/GameSearchSecurityTest.java` | 3: busca IGDB retorna 401 para anônimo, 403 para usuário comum e 200 para administrador. |
 | `config/AuthorizationBoundaryTest.java` | 15: nega rotas protegidas sem token; barra leitura, alteração, listagem e exclusão de avaliações alheias; impede leitura de amizades e aceite/rejeição de pedidos alheios; bloqueia listagem, aceite/rejeição de convites alheios; protege os três endpoints de compatibilidade por conta; restringe criação/importação de jogos a administradores. Verifica ausência de escrita/consulta em recusas selecionadas. |
+| `integration/PostgresTestDatabaseGuardTest.java` | 3: aceita apenas a URL exata de `game_match_test`; rejeita URL ausente, banco de desenvolvimento e variação inesperada. |
+| `integration/PostgresPersistenceIntegrationTest.java` | 7: confirma conexão ao banco teste e migrações V1/V2; persistência e email case-insensitive único; plataformas e atualização de avaliação; amizade, convite e compatibilidade após recarga; FKs de amizade, convite e plataforma. Cada caso usa transação revertida. |
 
-Tipos confirmados: testes de unidade com mocks, teste de contexto Spring e testes de camada web com MockMvc. O teste de fluxo de autenticação exercita endpoints HTTP, BCrypt e geração/validação de JWT reais, mas usa repositório em memória mockado; não é evidência de integração com PostgreSQL ou IGDB.
+Tipos confirmados: testes de unidade com mocks, teste de contexto Spring, camada web com MockMvc e integração real com PostgreSQL. O teste de fluxo de autenticação usa repositório em memória mockado; não é evidência de persistência PostgreSQL ou integração com IGDB.
 
 ## Ferramentas e comandos
 
 | Ferramenta/comando | Evidência e status |
 | --- | --- |
-| `.\test.ps1` | Comando canônico na raiz: executa Maven Wrapper com `--batch-mode --no-transfer-progress test` em `game_match_test` e depois `flutter test --no-pub`; restaura variáveis de ambiente e informa o código de saída de cada suíte. Requer `.env` com credenciais PostgreSQL e o banco de teste criado. |
+| `.\test.ps1` | Comando canônico na raiz: executa Maven Wrapper com `--batch-mode --no-transfer-progress test` em `game_match_test` e depois `flutter test --no-pub`; restaura variáveis de ambiente, preserva a saída de erro dos processos nativos sem confundi-la com falha e decide pelo código de saída. Requer `.env` com credenciais PostgreSQL e o banco de teste criado. |
 | JUnit Jupiter | Importado pelos testes Java; executado pelo ciclo de testes Maven. |
 | Mockito / AssertJ | Usados diretamente nos testes Java inspecionados. |
 | Spring MockMvc | Usado pelos testes de segurança/autorização para requisições simuladas. |
-| `mvnw.cmd --batch-mode --no-transfer-progress test` | Comando do backend pelo Maven Wrapper; usado também pelo comando agregado. A URL do processo deve apontar para `game_match_test`; o script agregado configura isso. Última execução: 60 testes, 0 falhas, 0 erros, exit code 0. |
+| `mvnw.cmd --batch-mode --no-transfer-progress test` | Comando do backend pelo Maven Wrapper; usado também pelo comando agregado. A URL do processo deve apontar para `game_match_test`; `PostgresTestDatabaseGuard` rejeita outra URL antes de inicializar Spring/Flyway. Execução agregada: 70 testes, 0 falhas, 0 erros, exit code 0. |
+| `-Dtest=PostgresTestDatabaseGuardTest,PostgresPersistenceIntegrationTest` | Executado duas vezes em `backend/`; em ambas: 10 testes, 0 falhas, 0 erros, exit code 0. A URL `game_match` também foi rejeitada pelo teste de contexto antes de qualquer inicialização do Flyway. |
 | Testes direcionados dos fluxos (`-Dtest=RatingControllerTest,FriendshipControllerTest,MatchControllerTest,PlayInviteControllerTest,GameControllerTest,AuthorizationBoundaryTest`) | Executados em `backend/`: 41 testes, 0 falhas, 0 erros. Cobrem avaliações, amizades, compatibilidade, convites, catálogo e isolamento. |
-| `flutter_test` / `flutter test --no-pub` | Pacote `flutter_test` declarado no `frontend/pubspec.yaml`. Última execução agregada: 59 testes, todos passaram, exit code 0; requer acesso de escrita ao cache `C:\flutter\bin\cache\lockfile` neste ambiente. |
+| `flutter_test` / `flutter test --no-pub` | Pacote `flutter_test` declarado no `frontend/pubspec.yaml`. Última execução agregada: 83 testes, todos passaram, exit code 0; requer acesso de escrita ao cache do SDK Flutter neste ambiente. |
 | `flutter analyze` | Citado em comentário de `frontend/analysis_options.yaml`; comando do analisador estático, não da suíte de testes. Não executado. |
 | `start-dev.ps1` | Script presente para iniciar o ambiente de desenvolvimento, não uma suíte de testes. |
 
 ## Cobertura identificável
 
 - Há cobertura automatizada identificável para apresentação do cartão/detalhe de jogo, validação de formulários no cliente, cadastro/login com uso de JWT, avaliações, amizades, compatibilidade, convites, catálogo/importação IGDB, normalização de configuração e fronteiras de autorização/isolation por usuário na API.
+- QA manual HTTP em 2026-11-18 confirmou `GET /games` 200, `POST /games` 200 para administrador e 403 para usuário comum sem persistência da tentativa negada. Duas contas descartáveis confirmaram leituras próprias e bloqueio 403 para leitura cruzada de avaliações, amizades, compatibilidade/convites e atualização de avaliação alheia; o valor original permaneceu. Dados removidos e verificação posterior confirmou zero contas/jogos temporários. Nenhuma chamada IGDB foi feita.
+- QA HTTP positivo adicional em 2026-11-18, apenas em `game_match_test`: duas contas descartáveis criaram interesses diferentes no mesmo jogo e aceitaram amizade. Os endpoints de comparação, lista de jogos compatíveis e amigos interessados retornaram o jogo/amigo compartilhado (1 resultado em cada). As contas e relações temporárias foram removidas; a contagem posterior de contas QA foi zero.
+- QA visual em 2026-11-18 percorreu cadastro e login Flutter, carregamento atrasado de catálogo, lista de avaliação preenchida, estado após avaliar todos os jogos, logout, login em outra conta e compartilhamento compatível na aba Jogos. A conta B voltou a ver jogos que A já havia avaliado; os jogos compartilhados mostraram uma amiga interessada.
+- Falha P2 observada em 2026-11-18: ao ficar offline, a aba Jogos apresentou mensagem de erro, mas a aba Avaliar mostrou “Você já avaliou todos os jogos disponíveis”, confundindo indisponibilidade do backend com catálogo concluído. Passos reproduzíveis em [relatório de catálogo offline](reports/2026-11-18-catalogo-offline-mostrado-como-vazio.md).
 - A cobertura de autorização de backend é a área funcional mais explícita nos testes encontrados.
 - Não foi localizada configuração de JaCoCo, relatório de cobertura ou meta percentual no `pom.xml` inspecionado.
 - O `.gitignore` do frontend contém regra para `/coverage/`, mas isso por si só não confirma ferramenta, geração ou medição de cobertura.
@@ -75,16 +83,16 @@ Tipos confirmados: testes de unidade com mocks, teste de contexto Spring e teste
 ## Lacunas e itens não confirmados
 
 - O cadastro/login tem testes Flutter para mensagens e validadores, mas não há teste Flutter do percurso completo até API, persistência, sessão e navegação após login.
-- Swipe tem testes unitários do controller; serviços Flutter de avaliações, amizades, compatibilidade e convites têm contratos HTTP simulados. Testes de widget/interação Flutter desses fluxos e do catálogo/admin ainda estão pendentes.
-- Há testes unitários dos controllers para regras de avaliação, amizade, compatibilidade e convites e testes MockMvc para suas fronteiras de autorização. Integração real com banco e cobertura das telas Flutter desses fluxos continuam pendentes.
-- Fluxos completos de sucesso/erro da interface e interação real frontend/API não aparecem cobertos; os contratos HTTP usam `MockClient`.
-- Flyway aplicou as migrações V1 e V2 no PostgreSQL isolado `game_match_test`, e o teste de contexto Spring passou; testes de persistência real dos fluxos funcionais continuam não confirmados. A integração real com IGDB também não foi executada.
+- Swipe tem testes unitários do controller; serviços Flutter de avaliações, amizades, compatibilidade e convites têm contratos HTTP simulados. `FriendsScreen` e `GamesScreen` agora têm cobertura widget para fluxos sociais, compatibilidade e convites; gestos do swipe ainda não têm teste de widget.
+- Há testes unitários dos controllers para regras de avaliação, amizade, compatibilidade e convites, testes MockMvc para autorização e testes de integração real com PostgreSQL para persistência/migrações.
+- Não há interface administrativa de catálogo no Flutter, conforme confirmação do usuário e navegação atual. O QA HTTP cobriu somente `POST /games`; os fluxos IGDB seguem cobertos por testes automatizados, sem chamadas externas. O QA visual percorreu o cliente normal, mas não a interface de administração inexistente.
+- A migração atual não declara FKs em `ratings.user_id` nem `ratings.game_id`; os testes confirmam persistência e uso das avaliações, mas não integridade referencial que o esquema não possui. Avaliar essa alteração de esquema separadamente antes de aplicá-la sobre dados existentes. A integração real com IGDB também não foi executada.
 - Testes instrumentados Android, E2E e execução em navegador **não confirmados**.
 - Não há arquivos de workflow de CI sob `.github` identificados; há apenas diretório de configuração de modernização Java. Execução externa de CI **não confirmada**.
 - Playwright, Cypress e configuração equivalente **não encontrados**; não se presume seu uso.
 - O README documenta `.\test.ps1` como comando agregado e os comandos direcionados por stack.
-- O comando agregado final passou: 60 testes Maven e 59 Flutter, 0 falhas/erros; o backend foi direcionado para `game_match_test`.
+- O comando agregado final passou em 2026-11-18: 70 testes Maven e 83 Flutter, 0 falhas/erros; o backend foi direcionado para `game_match_test`. Os 10 testes PostgreSQL direcionados também passaram duas vezes.
 - Percentual de cobertura e estabilidade/flakiness **não confirmados**; não foi gerado relatório de cobertura nem feita execução repetida para medir flakiness.
 
 
-- QA manual pela interface foi concluído para cadastro/login, avaliações, amizades, compatibilidade e convites; todos passaram com contas/jogos descartáveis somente em `game_match_test`. Catálogo/admin e isolamento manual ficaram parciais; consulte `quality/reports/2026-10-25-suite-completa.md`.
+- QA manual pela interface em 2026-10-25 cobriu cadastro/login, avaliações, amizades, compatibilidade e convites. Em 2026-11-18, QA HTTP e visual confirmou limites de catálogo, isolamento e compartilhamento positivo em `game_match_test`, e documentou uma falha visual offline. A interface administrativa não existe. Consulte os relatórios em `quality/reports/`.

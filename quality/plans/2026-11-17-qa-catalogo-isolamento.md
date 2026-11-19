@@ -35,10 +35,10 @@
 - Reference: `quality/reports/2026-10-25-suite-completa.md`
 - Modify only if a material finding exists: `quality/reports/`
 
-- [ ] **Step 1: Confirmar backend, frontend e PostgreSQL ativos, com URL do backend apontada a `game_match_test`.**
-- [ ] **Step 2: Preparar contas descartáveis de usuário comum e administrador e dados mínimos de catálogo.**
-- [ ] **Step 3: Escolher uma ferramenta HTTP já disponível, se for necessária para verificar tentativas de acesso cruzado; não instalar dependências para esta rodada.**
-- [ ] **Step 4: Confirmar que o app apresenta uma interface administrativa.** Se não houver, limitar QA de interface às telas existentes e registrar o fluxo administrativo como indisponível para validação visual.
+- [x] **Step 1: Confirmar backend, frontend e PostgreSQL ativos, com URL do backend apontada a `game_match_test`.** Ambos responderam localmente; o log Spring indicou PostgreSQL 18 e `game_match_test`.
+- [x] **Step 2: Preparar contas descartáveis de usuário comum e administrador e dados mínimos de catálogo.** Duas contas temporárias e um jogo foram criados no banco de teste e removidos ao final.
+- [x] **Step 3: Escolher uma ferramenta HTTP já disponível, se for necessária para verificar tentativas de acesso cruzado; não instalar dependências para esta rodada.** Usado `Invoke-WebRequest` do PowerShell e `psql` local.
+- [x] **Step 4: Confirmar que o app apresenta uma interface administrativa.** O usuário confirmou que não há interface administrativa; a inspeção de `MainNavigation` mostra apenas Avaliar, Amigos e Jogos. O QA visual administrativo foi declarado indisponível.
 
 ### Task 2: Percorrer catálogo e ações administrativas disponíveis
 
@@ -47,10 +47,10 @@
 - Inspect: rotas de catálogo/importação em `backend/src/main/java/com/gamematch/backend/controller/GameController.java`
 - Record material findings only: `quality/reports/`
 
-- [ ] **Step 1: Com usuário comum, percorrer a consulta de jogos disponível e registrar carregamento, lista vazia, erro de backend e resultado com dados.**
-- [ ] **Step 2: Com administrador, percorrer cada ação administrativa de interface existente e comparar resultado com o esperado.**
-- [ ] **Step 3: Com usuário comum, tentar acessar a mesma ação; confirmar bloqueio observável sem escrita indevida.**
-- [ ] **Step 4: Se não existir interface administrativa, não simular uma aprovação de UI; registrar a lacuna e os endpoints que permanecem cobertos por testes automatizados.**
+- [x] **Step 1: Com usuário comum, percorrer a consulta de jogos disponível e registrar carregamento, lista vazia, erro de backend e resultado com dados.** Flutter web mostrou o carregamento durante atraso temporário de `GET /games` e depois carregou os jogos fixture. Após avaliar os três jogos, mostrou “Você avaliou todos os jogos”. Offline, a aba Jogos exibiu erro, mas a aba Avaliar mostrou incorretamente “Você já avaliou todos os jogos disponíveis”. Defeito P2 registrado em `quality/reports/2026-11-18-catalogo-offline-mostrado-como-vazio.md`.
+- [x] **Step 2: Com administrador, percorrer cada ação administrativa de interface existente e comparar resultado com o esperado.** Não aplicável: não existe interface administrativa. A criação administrativa disponível por API `POST /games` retornou 200; não foram chamadas rotas IGDB externas.
+- [x] **Step 3: Com usuário comum, tentar acessar a mesma ação; confirmar bloqueio observável sem escrita indevida.** `POST /games` retornou 403; consulta posterior confirmou que o jogo negado não persistiu.
+- [x] **Step 4: Se não existir interface administrativa, não simular uma aprovação de UI; registrar a lacuna e os endpoints que permanecem cobertos por testes automatizados.** Testes MockMvc existentes cobrem as permissões de criação/importação/admin; QA HTTP desta rodada cobriu criação manual.
 
 ### Task 3: Verificar isolamento entre contas
 
@@ -59,10 +59,10 @@
 - Reference: `backend/src/test/java/com/gamematch/backend/config/AuthorizationBoundaryTest.java`
 - Record material findings only: `quality/reports/`
 
-- [ ] **Step 1: Criar dados privados distintos para duas contas descartáveis e confirmar que cada conta vê apenas os próprios dados e os compartilhamentos previstos.**
-- [ ] **Step 2: Sair da conta A, autenticar a conta B e confirmar que a sessão e as telas não preservam dados privados de A.**
-- [ ] **Step 3: Tentar ações cruzadas de leitura e escrita nos fluxos disponíveis; verificar resposta de autorização e ausência de alteração.**
-- [ ] **Step 4: Limpar os dados descartáveis ao final e confirmar que o banco de desenvolvimento permaneceu intocado.**
+- [x] **Step 1: Criar dados privados distintos para duas contas descartáveis e confirmar que cada conta vê apenas os próprios dados e os compartilhamentos previstos.** Leituras cruzadas de dados privados foram negadas na rodada anterior. Nesta rodada, duas contas descartáveis criadas em `game_match_test` autenticaram, criaram interesses LIKE/FAVORITE, aceitaram amizade e receberam o jogo compartilhado pelos endpoints de comparação, jogos compatíveis e amigos interessados. Respostas: amizade `ACCEPTED`, 1 jogo compatível e 1 amigo interessado; dados removidos e limpeza confirmada.
+- [x] **Step 2: Sair da conta A, autenticar a conta B e confirmar que a sessão e as telas não preservam dados privados de A.** Logout da conta A retornou ao login sem o nome de A; login B exibiu o nome de B e voltou a listar um jogo que A já havia avaliado, demonstrando que as avaliações não foram herdadas entre sessões. Com amizade aceita e avaliação compartilhada, B também viu o jogo compatível e A como amiga interessada.
+- [x] **Step 3: Tentar ações cruzadas de leitura e escrita nos fluxos disponíveis; verificar resposta de autorização e ausência de alteração.** Leituras de avaliação, amizade, compatibilidade e convite retornaram 403; atualização da avaliação alheia retornou 403 e a conta dona confirmou que o valor permaneceu intacto.
+- [x] **Step 4: Limpar os dados descartáveis ao final e confirmar que o banco de desenvolvimento permaneceu intocado.** Uma transação de limpeza protegida por `current_database() = 'game_match_test'` removeu somente os IDs/itens de QA. Consulta posterior confirmou 0 itens `QA_TEMP_`/`QA_DENIED_` e 0 contas QA da rodada; backend nunca apontou para `game_match`.
 
 ### Task 4: Consolidar evidências e encaminhar achados
 
@@ -70,6 +70,6 @@
 - Update only if needed: `quality/test-inventory.md`
 - Create report only for findings, risks or decisions: `quality/reports/`
 
-- [ ] **Step 1: Para cada achado, registrar pré-condição, passos, esperado, observado e evidência sem segredo.**
-- [ ] **Step 2: Não criar relatório de rodada sem achado relevante; atualizar inventário somente com o escopo realmente validado.**
-- [ ] **Step 3: Revisar conclusões e evidências com o Code Reviewer; QA permanece responsável por não alterar o produto.**
+- [x] **Step 1: Para cada achado, registrar pré-condição, passos, esperado, observado e evidência sem segredo.** A falha de catálogo offline foi registrada com passos reproduzíveis, esperado e observado; a ausência da interface administrativa continua confirmada.
+- [x] **Step 2: Registrar relatórios somente para falhas, riscos ou decisões relevantes; atualizar inventário com o escopo executado.** O achado P2 foi documentado e o inventário atualizado com os fluxos visuais realizados.
+- [x] **Step 3: Revisar conclusões e evidências com o Code Reviewer; QA permanece responsável por não alterar o produto.** Revisão independente aprovada; o achado P2 foi encaminhado ao backlog como correção pendente.

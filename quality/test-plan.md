@@ -35,7 +35,7 @@ Os fluxos abaixo foram identificados nas telas, serviços e controladores presen
 
 - **Testes unitários e de controlador:** validar regras de domínio, mapeamento de erros e fronteiras de autorização com dependências controladas por mocks quando apropriado. Critério: entradas válidas produzem resultado esperado; entradas inválidas e falhas produzem resposta definida sem efeitos de escrita indevidos.
 - **Testes de interface Flutter:** verificar conteúdo e estados observáveis das telas, incluindo carregamento, sucesso, erro e ausência de itens. Critério: usuário vê resultado coerente com o estado e as ações levam ao fluxo esperado.
-- **Testes de integração:** quando necessários, verificar componentes reais juntos (por exemplo, persistência e migrações) em ambiente isolado e documentar dependências externas. Não há executor/configuração de integração com banco confirmado no inventário atual.
+- **Testes de integração:** `PostgresPersistenceIntegrationTest` usa Spring Boot, JPA, Flyway e PostgreSQL real em `game_match_test`; a URL é validada antes da inicialização do contexto. Casos transacionais são revertidos, sem `TRUNCATE`, recriação ou limpeza global do banco. IGDB não é chamada nos fluxos de persistência.
 - **Autorização:** rotas protegidas devem rejeitar requisição sem credencial (401); credencial válida sem permissão deve receber 403; recusas de escrita não devem persistir dados.
 - **Regras do produto:** convites devem respeitar amizade aceita e estado pendente; importação deve respeitar os critérios de jogo principal e privilégio administrativo.
 - **Regressão:** executar a suíte pertinente ao código alterado com o executor documentado e registrar falhas/bloqueios sem declarar aprovado o que não foi executado.
@@ -61,5 +61,5 @@ O SDK selecionado é `C:\flutter`, fora da raiz gravável do projeto. A suíte f
 - **Flutter direcionado:** `flutter test --no-pub` em `frontend/`.
 - `flutter analyze` é uma análise estática separada; não faz parte da suíte agregada.
 
-O comando agregado passou em 2026-11-17: 60 testes Maven e 59 Flutter, sem falhas ou erros. O resultado está detalhado em `test-inventory.md`.
+Em 2026-11-18, `.\test.ps1` passou com 70 testes Maven e 83 Flutter, sem falhas ou erros, usando `game_match_test`. Os 10 testes de guarda e persistência PostgreSQL também passaram em duas execuções direcionadas; uma execução controlada com URL `game_match` foi recusada antes do Flyway. Os detalhes estão em `test-inventory.md`.
 

@@ -10,16 +10,17 @@ class SwipeController {
 
   int currentIndex = 0;
 
-  bool isLoading = true;
+  bool isLoading = false;
+  bool hasLoadError = false;
 
   final List<GameModel> likedGames = [];
   final List<GameModel> dislikedGames = [];
   final List<GameModel> favoriteGames = [];
 
   Future<void> loadGames(int userId, {bool includeRatedGames = false}) async {
+    isLoading = true;
+    hasLoadError = false;
     try {
-      isLoading = true;
-
       final allGames = await _service.fetchGames();
 
       if (includeRatedGames) {
@@ -38,6 +39,7 @@ class SwipeController {
 
       currentIndex = 0;
     } catch (e) {
+      hasLoadError = true;
       print("Erro ao carregar jogos: $e");
     } finally {
       isLoading = false;

@@ -63,6 +63,36 @@ void main() {
     );
   });
 
+  test('registra falha ao carregar avaliações e limpa erro após nova consulta', () async {
+    var ratingsFail = true;
+
+    await http.runWithClient(
+      () async {
+        final controller = SwipeController();
+
+        await controller.loadGames(userId);
+
+        expect(controller.hasLoadError, isTrue);
+        expect(controller.isLoading, isFalse);
+
+        ratingsFail = false;
+        await controller.loadGames(userId);
+
+        expect(controller.hasLoadError, isFalse);
+        expect(controller.currentGame?.id, 1);
+      },
+      () => MockClient((request) async {
+        if (request.url.path == '/games') {
+          return http.Response(jsonEncode([game(1, 'Game 1')]), 200);
+        }
+        if (request.url.path == '/ratings/user/$userId') {
+          return ratingsFail ? http.Response('', 503) : http.Response('[]', 200);
+        }
+        return http.Response('', 404);
+      }),
+    );
+  });
+
   test('registra o tipo de avaliação e avança após salvar', () async {
     final submittedTypes = <String>[];
 

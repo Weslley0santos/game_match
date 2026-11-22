@@ -15,6 +15,7 @@ class SwipeScreen extends StatefulWidget {
 
 class _SwipeScreenState extends State<SwipeScreen> {
   final controller = SwipeController();
+  bool _includeRatedGames = false;
 
   @override
   void initState() {
@@ -25,11 +26,17 @@ class _SwipeScreenState extends State<SwipeScreen> {
   Future<void> loadGames({bool includeRatedGames = false}) async {
     final userId = UserSession.userId;
 
-    if (userId == null) {
+    if (userId == null || controller.isLoading) {
       return;
     }
 
-    await controller.loadGames(userId, includeRatedGames: includeRatedGames);
+    _includeRatedGames = includeRatedGames;
+    final loading = controller.loadGames(
+      userId,
+      includeRatedGames: includeRatedGames,
+    );
+    setState(() {});
+    await loading;
 
     if (mounted) {
       setState(() {});
@@ -65,10 +72,37 @@ class _SwipeScreenState extends State<SwipeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (controller.isLoading) {
+    if (controller.isLoading || UserSession.userId == null) {
       return const Scaffold(
         backgroundColor: Colors.black,
         body: Center(child: CircularProgressIndicator()),
+      );
+    }
+
+    if (controller.hasLoadError) {
+      return Scaffold(
+        backgroundColor: Colors.black,
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Não foi possível carregar a lista de jogos para avaliação.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.white, fontSize: 18),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () =>
+                      loadGames(includeRatedGames: _includeRatedGames),
+                  child: const Text('Tentar novamente'),
+                ),
+              ],
+            ),
+          ),
+        ),
       );
     }
 

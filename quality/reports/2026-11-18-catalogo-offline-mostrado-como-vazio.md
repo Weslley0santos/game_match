@@ -38,3 +38,9 @@ O usuário pode acreditar que terminou de avaliar o catálogo e não perceber qu
 ## Limites da rodada
 
 QA não alterou o produto. O estado de carregamento foi observado com um atraso temporário de resposta no navegador, restaurado ao fim da validação. Contas, avaliações e amizade descartáveis foram removidas de `game_match_test`; a verificação final retornou zero usuários, avaliações, amizades e convites para os dois IDs. Nenhuma chamada à IGDB foi feita.
+
+## Correção em 22/11/2026
+
+A aba Avaliar exibe “Não foi possível carregar a lista de jogos para avaliação.” e oferece “Tentar novamente”. A ação repete a consulta no modo original, inclusive quando a falha ocorre após “Reiniciar avaliação”.
+
+Os dois testes de widget falharam antes da correção e passaram depois. A suíte Flutter completa passou com 86 testes, e o QA executou novamente os dois casos com HTTP simulado. A verificação desta correção foi feita em testes de widget, sem nova rodada manual no navegador.

@@ -6,6 +6,11 @@ import com.gamematch.backend.model.RatingType;
 import com.gamematch.backend.repository.RatingRepository;
 import com.gamematch.backend.service.CurrentUserService;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.ServerErrorMessage;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -88,5 +93,42 @@ class RatingControllerTest {
                         assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN));
 
         verify(repository, never()).delete(any(Rating.class));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"fk_ratings_game, NOT_FOUND", "fk_ratings_user, UNAUTHORIZED"})
+    void mapsMissingRatingReferenceToHttpStatus(String constraint, HttpStatus status) {
+        RatingController controller = controllerWithSaveFailure(foreignKeyFailure(constraint));
+
+        assertThatThrownBy(() -> controller.create(new RatingRequest(42L, RatingType.LIKE)))
+                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
+                        assertThat(exception.getStatusCode()).isEqualTo(status));
+    }
+
+    @Test
+    void propagatesUnrelatedIntegrityFailure() {
+        DataIntegrityViolationException failure = foreignKeyFailure("other_constraint");
+        RatingController controller = controllerWithSaveFailure(failure);
+
+        assertThatThrownBy(() -> controller.create(new RatingRequest(42L, RatingType.LIKE)))
+                .isSameAs(failure);
+    }
+
+    private RatingController controllerWithSaveFailure(DataIntegrityViolationException failure) {
+        RatingRepository repository = mock(RatingRepository.class);
+        CurrentUserService currentUser = mock(CurrentUserService.class);
+        when(currentUser.requireUserId()).thenReturn(7L);
+        when(repository.findAllByUserIdAndGameId(7L, 42L)).thenReturn(List.of());
+        when(repository.save(any(Rating.class))).thenThrow(failure);
+        return new RatingController(repository, currentUser);
+    }
+
+    private DataIntegrityViolationException foreignKeyFailure(String constraint) {
+        PSQLException failure = mock(PSQLException.class);
+        ServerErrorMessage serverError = mock(ServerErrorMessage.class);
+        when(failure.getSQLState()).thenReturn("23503");
+        when(failure.getServerErrorMessage()).thenReturn(serverError);
+        when(serverError.getConstraint()).thenReturn(constraint);
+        return new DataIntegrityViolationException("Rating insert failed", failure);
     }
 }

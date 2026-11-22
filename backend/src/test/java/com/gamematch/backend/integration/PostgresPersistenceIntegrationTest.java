@@ -23,18 +23,23 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 
 import jakarta.persistence.EntityManager;
+import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @SpringBootTest
 @ContextConfiguration(initializers = PostgresTestDatabaseGuard.class)
@@ -84,7 +89,7 @@ class PostgresPersistenceIntegrationTest {
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY version",
                 String.class
         );
-        assertTrue(appliedVersions.containsAll(List.of("1", "2")), "V1 and V2 must be applied by Flyway");
+        assertTrue(appliedVersions.containsAll(List.of("1", "2", "3")), "V1, V2 and V3 must be applied by Flyway");
         assertTrue(game.getTitle().startsWith("Integration Game "));
     }
 
@@ -191,6 +196,51 @@ class PostgresPersistenceIntegrationTest {
                 "INSERT INTO game_platforms (game_id, platform) VALUES (?, ?)",
                 -1L, "Test platform"
         ));
+    }
+
+    @Test
+    void postgresRejectsDeletingAUserReferencedByRating() {
+        ratingRepository.saveAndFlush(new Rating(sender.getId(), game.getId(), RatingType.LIKE));
+
+        assertForeignKeyViolation(() -> jdbc.update("DELETE FROM users WHERE id = ?", sender.getId()));
+    }
+
+    @Test
+    void postgresRejectsDeletingAGameReferencedByRating() {
+        ratingRepository.saveAndFlush(new Rating(sender.getId(), game.getId(), RatingType.LIKE));
+        jdbc.update("DELETE FROM game_platforms WHERE game_id = ?", game.getId());
+
+        assertForeignKeyViolation(() -> jdbc.update("DELETE FROM games WHERE id = ?", game.getId()));
+    }
+
+    @Test
+    void apiReturns404WhenGameDoesNotExist() throws Exception {
+        setCurrentUser(sender.getId());
+
+        MockMvcBuilders.standaloneSetup(ratingController).build()
+                .perform(post("/ratings").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"gameId":-1,"type":"LIKE"}
+                                """))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void apiReturns401WhenJwtSubjectNoLongerExists() throws Exception {
+        setCurrentUser(-1L);
+
+        MockMvcBuilders.standaloneSetup(ratingController).build()
+                .perform(post("/ratings").contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"gameId":%d,"type":"LIKE"}
+                                """.formatted(game.getId())))
+                .andExpect(status().isUnauthorized());
+    }
+
+    private void assertForeignKeyViolation(Runnable write) {
+        var failure = assertThrows(DataAccessException.class, write::run);
+        var cause = assertInstanceOf(SQLException.class, failure.getMostSpecificCause());
+        assertEquals("23503", cause.getSQLState());
     }
 
     private User user(String name, String email) {

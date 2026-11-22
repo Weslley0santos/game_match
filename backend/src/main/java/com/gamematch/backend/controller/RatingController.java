@@ -4,6 +4,9 @@ import com.gamematch.backend.dto.RatingRequest;
 import com.gamematch.backend.model.Rating;
 import com.gamematch.backend.repository.RatingRepository;
 import com.gamematch.backend.service.CurrentUserService;
+import org.postgresql.util.PSQLException;
+import org.postgresql.util.PSQLState;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
@@ -33,7 +36,22 @@ public class RatingController {
             repository.saveAll(existingRatings);
             return existingRatings.get(0);
         }
-        return repository.save(new Rating(userId, request.gameId(), request.type()));
+        try {
+            return repository.save(new Rating(userId, request.gameId(), request.type()));
+        } catch (DataIntegrityViolationException exception) {
+            if (exception.getMostSpecificCause() instanceof PSQLException failure
+                    && PSQLState.FOREIGN_KEY_VIOLATION.getState().equals(failure.getSQLState())
+                    && failure.getServerErrorMessage() != null) {
+                String constraint = failure.getServerErrorMessage().getConstraint();
+                if ("fk_ratings_user".equals(constraint)) {
+                    throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Authenticated user not found");
+                }
+                if ("fk_ratings_game".equals(constraint)) {
+                    throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Game not found");
+                }
+            }
+            throw exception;
+        }
     }
 
     @GetMapping("/{id}")

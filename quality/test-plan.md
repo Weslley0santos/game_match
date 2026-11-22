@@ -61,5 +61,5 @@ O SDK selecionado é `C:\flutter`, fora da raiz gravável do projeto. A suíte f
 - **Flutter direcionado:** `flutter test --no-pub` em `frontend/`.
 - `flutter analyze` é uma análise estática separada; não faz parte da suíte agregada.
 
-Em 2026-11-18, `.\test.ps1` passou com 70 testes Maven e 83 Flutter, sem falhas ou erros, usando `game_match_test`. Os 10 testes de guarda e persistência PostgreSQL também passaram em duas execuções direcionadas; uma execução controlada com URL `game_match` foi recusada antes do Flyway. Os detalhes estão em `test-inventory.md`.
+Em 2026-11-22, `.\test.ps1` passou com 80 testes Maven e 86 Flutter em `game_match_test`. A execução direcionada de migração, persistência, avaliações e autorização passou com 36 testes. Os detalhes estão em `test-inventory.md`.
 

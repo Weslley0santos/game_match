@@ -70,8 +70,8 @@ Os testes do backend cobrem as regras principais de domínio e autorização com
 
 ## Lacunas iniciais observadas
 
-- Ainda faltam testes de interação visual do swipe e do percurso completo de autenticação/navegação. Não foi encontrada interface Flutter para administração do catálogo; confirmar se esse fluxo será criado antes de planejar testes de tela para ele.
-- Persistência e migrações principais são verificadas por `PostgresPersistenceIntegrationTest` em `game_match_test`, com rollback por teste. A tabela `ratings` não possui FKs para usuários/jogos nas migrações atuais; essa lacuna está registrada para avaliação separada.
+- Ainda faltam testes de gestos de swipe e do percurso completo de autenticação/navegação. A interface Flutter de administração do catálogo e seus testes foram adiados por decisão de produto.
+- Persistência e migrações são verificadas em `game_match_test`. A V3 adiciona as chaves estrangeiras de `ratings`, com ensaios de atualização, preservação de dados e rollback em esquemas descartáveis. [Plano de integridade referencial](plans/2026-11-22-integridade-referencial-avaliacoes.md).
 - Não foi localizada configuração de cobertura. Portanto, este documento não informa percentual de cobertura.
 - A aprovação da suíte deve ser baseada na execução registrada em `quality/test-inventory.md`, não presumida pela existência dos testes.
 

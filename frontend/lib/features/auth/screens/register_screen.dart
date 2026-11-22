@@ -14,16 +14,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final UserService _service = UserService();
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController nameController = TextEditingController();
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
 
   @override
   void dispose() {
-    nameController.dispose();
-    emailController.dispose();
+    usernameController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -31,14 +29,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> register() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final name = nameController.text.trim();
-    final email = emailController.text.trim();
+    final username = usernameController.text.trim();
     final password = passwordController.text;
 
     setState(() => isLoading = true);
 
     try {
-      await _service.createUser(name, email, password);
+      await _service.createUser(username, password);
 
       if (!mounted) return;
 
@@ -47,6 +44,11 @@ class _RegisterScreenState extends State<RegisterScreen> {
       );
 
       Navigator.pop(context);
+    } on UsernameUnavailableException {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Esse nome de usuário já está em uso")),
+      );
     } catch (e) {
       if (!mounted) return;
 
@@ -83,34 +85,12 @@ class _RegisterScreenState extends State<RegisterScreen> {
                 ),
                 const SizedBox(height: 32),
                 TextFormField(
-                  controller: nameController,
-                  validator: AuthValidators.validateName,
+                  controller: usernameController,
+                  textCapitalization: TextCapitalization.none,
+                  validator: AuthValidators.validateUsername,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: "Nome",
-                    labelStyle: TextStyle(color: Colors.white),
-                    errorBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.red),
-                    ),
-                    focusedErrorBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.red),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderSide: BorderSide(color: Colors.green),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 15),
-                TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: AuthValidators.validateEmail,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
-                    labelText: "Email",
+                    labelText: "Nome de usuário",
                     labelStyle: TextStyle(color: Colors.white),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.red),

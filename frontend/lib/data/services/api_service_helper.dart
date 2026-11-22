@@ -4,6 +4,16 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../../core/session/user_session.dart';
 
+class ApiRequestException implements Exception {
+  const ApiRequestException(this.message, {this.statusCode});
+
+  final String message;
+  final int? statusCode;
+
+  @override
+  String toString() => 'Exception: $message';
+}
+
 class ApiServiceHelper {
   static const Duration timeoutDuration = Duration(seconds: 10);
 
@@ -18,9 +28,11 @@ class ApiServiceHelper {
     try {
       return await action().timeout(timeoutDuration);
     } on TimeoutException {
-      throw Exception("Tempo de conexão esgotado. Verifique sua conexão.");
-    } catch (e) {
-      throw Exception("Não foi possível conectar ao servidor.");
+      throw const ApiRequestException(
+        "Tempo de conexão esgotado. Verifique sua conexão.",
+      );
+    } catch (_) {
+      throw const ApiRequestException("Não foi possível conectar ao servidor.");
     }
   }
 
@@ -57,13 +69,14 @@ class ApiServiceHelper {
       return;
     }
 
-    throw Exception(_messageForStatus(response.statusCode));
+    throw ApiRequestException(
+      _messageForStatus(response.statusCode),
+      statusCode: response.statusCode,
+    );
   }
 
   static dynamic _decodeSuccessResponse(http.Response response) {
-    if (!_isSuccess(response.statusCode)) {
-      throw Exception(_messageForStatus(response.statusCode));
-    }
+    ensureSuccess(response);
 
     if (response.body.trim().isEmpty) {
       return null;

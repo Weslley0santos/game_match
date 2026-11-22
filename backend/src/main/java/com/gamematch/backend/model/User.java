@@ -11,7 +11,8 @@ public class User {
     private Long id;
 
     private String name;
-    private String email;
+    @Column(name = "username", length = 32, nullable = false, unique = true)
+    private String username;
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -33,12 +34,12 @@ public class User {
         this.name = name;
     }
 
-    public String getEmail() {
-        return email;
+    public String getUsername() {
+        return username;
     }
 
-    public void setEmail(String email) {
-        this.email = email;
+    public void setUsername(String username) {
+        this.username = username;
     }
 
     public String getPassword() {

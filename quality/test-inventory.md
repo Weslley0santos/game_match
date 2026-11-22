@@ -4,7 +4,8 @@
 
 - **Fato observado:** aparece em arquivo, configuração ou documentação inspecionada.
 - **Não confirmado:** não foi possível concluir apenas pela inspeção; não significa necessariamente que não exista fora do repositório ou em ambiente externo.
-- Última execução agregada registrada: em 2026-11-22, `.\test.ps1` passou com 80 testes Maven e 86 Flutter. O Maven apontou para o PostgreSQL isolado `game_match_test`.
+- Última execução agregada registrada: em 2026-11-22, `.\test.ps1` passou com 82 testes Maven e 94 Flutter. O Maven apontou para o PostgreSQL isolado `game_match_test`.
+- Os 43 testes de contrato Flutter também passaram em execução direcionada com `API_BASE_URL` definida.
 
 ## Tecnologias e organização
 
@@ -12,34 +13,34 @@
 | --- | --- |
 | Frontend | Flutter/Dart; aplicação em `frontend/lib/`; testes em `frontend/test/`; dependências de desenvolvimento `flutter_test` e `flutter_lints` em `frontend/pubspec.yaml`. |
 | Backend | Java 21 e Spring Boot 4.0.6 em `backend/pom.xml`; testes em `backend/src/test/java/`; dependências de teste Spring Data JPA e WebMVC. Os testes usam JUnit Jupiter, Mockito, AssertJ e MockMvc. |
-| Persistência | PostgreSQL e Flyway configurados no backend, com migrações `V1` a `V3`. |
+| Persistência | PostgreSQL e Flyway configurados no backend, com migrações `V1` a `V4`. |
 | Ambiente local | `start-dev.ps1` inicia backend e Flutter Web e verifica disponibilidade HTTP; não executa as suítes de teste. `docker-compose.yml` declara PostgreSQL e backend. |
 
 ## Testes encontrados
 
-### Frontend — 9 arquivos de teste, 86 testes
+### Frontend
 
 | Arquivo | Casos observados |
 | --- | --- |
 | `frontend/test/game_card_test.dart` | 2 casos: URL de capa IGDB convertida para resolução alta e imagem configurada com `BoxFit.contain`. |
 | `frontend/test/games_screen_test.dart` | 14 casos: cabeçalho; estados de compatibilidade e convites; amigos interessados; aceitar/recusar e enviar convites; fallback da capa. |
 | `frontend/test/friends_screen_test.dart` | 11 casos: carregamento/erro/vazio, busca, envio/falha e aceite/recusa de solicitações, compatibilidade e envio de convite. |
-| `frontend/test/widget_test.dart` | 1 smoke test verifica que o app abre na tela de login e exibe título, campos de email/senha e botão Entrar. Passou como parte da suíte Flutter executada com acesso elevado. |
-| `frontend/test/auth_validation_test.dart` | 6 testes unitários: nome obrigatório e trim, email ausente/malformado/normalizado e senha obrigatória sem regra de tamanho inventada. |
-| `frontend/test/auth_form_validation_test.dart` | 4 testes de widget: campos obrigatórios e email malformado nas telas de login e cadastro. |
-| `frontend/test/service_contract_test.dart` | 39 testes: contratos HTTP de avaliações, amizades, compatibilidade e convites; valida método, caminho/query, autenticação, payload, respostas, erros HTTP e falha de transporte com `MockClient`. |
+| `frontend/test/widget_test.dart` | Verifica que a tela inicial exibe o campo de nome de usuário, o campo de senha e o botão Entrar. |
+| `frontend/test/auth_validation_test.dart` | Valida nome de usuário obrigatório, formato e limites, além de senha obrigatória e limite em bytes de UTF-8. |
+| `frontend/test/auth_form_validation_test.dart` | Cobre formulários, validação, duplicata, retorno após cadastro, criação de sessão e mensagens de login para 401, 429, timeout e 5xx. |
+| `frontend/test/service_contract_test.dart` | Cobre contratos HTTP de cadastro, login, avaliações, amizades, compatibilidade e convites com `MockClient`, além de método, caminho, payload, resposta e falhas conforme o cenário. |
 | `frontend/test/swipe_controller_test.dart` | 7 testes: filtra avaliações anteriores, reinicia incluindo avaliados, sinaliza falha de carregamento e recupera após nova consulta, envia os três tipos de avaliação e preserva estado após falha de gravação. |
 | `frontend/test/swipe_screen_test.dart` | 2 testes de widget: estado de erro e nova tentativa após falha de catálogo, recuperação do catálogo e preservação do modo de reinício e da conclusão real. |
 
 Tipos confirmados: testes de widget/apresentação, testes unitários de validadores e controller e contratos HTTP simulados. Não há integração real ou E2E Flutter identificada.
 
-### Backend — 15 classes de teste, 80 casos executados
+### Backend
 
 | Arquivo | Casos observados |
 | --- | --- |
 | `BackendApplicationTests.java` | 1: carregamento do contexto Spring. |
-| `controller/UserControllerTest.java` | 4: conflito de email durante persistência convertido em HTTP 409; rejeita formatos de email malformados e campos vazios/nulos sem salvar. |
-| `controller/UserAuthenticationFlowTest.java` | 9: percorre cadastro → login → uso de JWT; rejeita credenciais inválidas e cadastro duplicado; confirma que usuários autenticados podem encontrar todas as contas pela listagem com apenas ID/nome e que o acesso anônimo é negado. |
+| `controller/UserControllerTest.java` | Confere rejeição de entradas inválidas e tradução apenas da violação da constraint de nome de usuário para HTTP 409. |
+| `controller/UserAuthenticationFlowTest.java` | Percorre cadastro → login por nome de usuário → uso de JWT. Cobre normalização, duplicata, credenciais inválidas e autorização do diretório de usuários. |
 | `controller/GameControllerTest.java` | 6: seleção/reutilização do jogo principal, filtros contra conteúdo extra e ids repetidos, exclusão de jogos não principais, consulta do catálogo e query vazia. |
 | `controller/RatingControllerTest.java` | 7: criação e atualização, dados incompletos, bloqueio de exclusão de avaliação alheia, tradução das duas chaves estrangeiras para 401/404 e propagação de falha de integridade alheia à V3. |
 | `controller/FriendshipControllerTest.java` | 5: envia pedido pendente, impede auto pedido e duplicata, permite novo pedido após rejeição, aceita/rejeita pedido pendente e consulta pedidos/amigos. |
@@ -50,8 +51,9 @@ Tipos confirmados: testes de widget/apresentação, testes unitários de validad
 | `config/GameSearchSecurityTest.java` | 3: busca IGDB retorna 401 para anônimo, 403 para usuário comum e 200 para administrador. |
 | `config/AuthorizationBoundaryTest.java` | 15: nega rotas protegidas sem token; barra leitura, alteração, listagem e exclusão de avaliações alheias; impede leitura de amizades e aceite/rejeição de pedidos alheios; bloqueia listagem, aceite/rejeição de convites alheios; protege os três endpoints de compatibilidade por conta; restringe criação/importação de jogos a administradores. Verifica ausência de escrita/consulta em recusas selecionadas. |
 | `integration/PostgresTestDatabaseGuardTest.java` | 3: aceita apenas a URL exata de `game_match_test`; rejeita URL ausente, banco de desenvolvimento e variação inesperada. |
-| `integration/PostgresPersistenceIntegrationTest.java` | 11: confirma conexão e migrações V1–V3, persistência dos fluxos principais, FKs existentes, rejeição de exclusão de jogo/usuário referenciado e retornos 404/401 do `POST /ratings` via MockMvc com banco real. Cada caso usa transação revertida. |
+| `integration/PostgresPersistenceIntegrationTest.java` | Confirma conexão e migrações V1–V4, unicidade de nome de usuário, cadastro e login com hash e JWT, persistência dos fluxos principais, FKs existentes e retornos 404/401 do `POST /ratings` via MockMvc com banco real. Cada caso usa transação revertida. |
 | `integration/PostgresRatingMigrationTest.java` | 3: aplica V3 em esquema vazio, preserva avaliações no upgrade V2→V3 e confirma reversão integral quando existe avaliação órfã, seguida de reaplicação após restaurar a referência no esquema descartável. |
+| `integration/PostgresUsernameMigrationTest.java` | Verifica a V4 num esquema descartável com contas anteriores e confirma preenchimento, formato, obrigatoriedade, unicidade e preservação dos dados e vínculos. |
 
 Tipos confirmados: testes de unidade com mocks, teste de contexto Spring, camada web com MockMvc e integração real com PostgreSQL. O teste de fluxo de autenticação usa repositório em memória mockado; não é evidência de persistência PostgreSQL ou integração com IGDB.
 

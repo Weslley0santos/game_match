@@ -4,12 +4,14 @@ import com.gamematch.backend.dto.RegistrationRequest;
 import com.gamematch.backend.model.User;
 import com.gamematch.backend.repository.UserRepository;
 import com.gamematch.backend.service.TokenService;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.sql.SQLException;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -23,92 +25,51 @@ import static org.mockito.Mockito.when;
 class UserControllerTest {
 
     @Test
-    void mapsDatabaseEmailConflictToHttpConflict() {
+    void registersNormalizedUsernameAndUsesItAsDisplayName() {
         UserRepository repository = mock(UserRepository.class);
         PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        TokenService tokenService = mock(TokenService.class);
-        UserController controller = new UserController(repository, passwordEncoder, tokenService);
+        UserController controller = new UserController(repository, passwordEncoder, mock(TokenService.class));
+        when(repository.findByUsername("player_27")).thenReturn(Optional.empty());
+        when(passwordEncoder.encode(" password ")).thenReturn("encoded-password");
+        when(repository.save(any(User.class))).thenAnswer(invocation -> {
+            User saved = invocation.getArgument(0);
+            saved.setId(12L);
+            return saved;
+        });
 
-        when(repository.findByEmailIgnoreCase("player@example.com")).thenReturn(Optional.empty());
-        when(passwordEncoder.encode("password")).thenReturn("encoded-password");
-        when(repository.save(any(User.class)))
-                .thenThrow(new DataIntegrityViolationException("duplicate email"));
+        var response = controller.create(new RegistrationRequest(" Player_27 ", " password "));
 
-        assertThatThrownBy(() -> controller.create(
-                new RegistrationRequest("Player", "player@example.com", "password")
-        )).isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
+        assertThat(response.getId()).isEqualTo(12L);
+        assertThat(response.getName()).isEqualTo("player_27");
+        assertThat(response.getUsername()).isEqualTo("player_27");
+        verify(passwordEncoder).encode(" password ");
     }
 
     @Test
-    void rejectsMalformedEmailWithoutSavingUser() {
+    void rejectsInvalidUsernameAndPasswordLengthWithoutSaving() {
         UserRepository repository = mock(UserRepository.class);
-        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        TokenService tokenService = mock(TokenService.class);
-        UserController controller = new UserController(repository, passwordEncoder, tokenService);
-
-        for (String email : new String[]{
-                "player@example",
-                ".player@example.com",
-                "player.@example.com",
-                "player..name@example.com",
-                "player@example..com",
-                "player@-example.com",
-                "player@example-.com",
-                "player@exam_ple.com",
-                "player,name@example.com"
-        }) {
-            assertThatThrownBy(() -> controller.create(
-                    new RegistrationRequest("Player", email, "password")
-            )).isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                    assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+        UserController controller = new UserController(repository, mock(PasswordEncoder.class), mock(TokenService.class));
+        for (String username : new String[]{"ab", "a".repeat(33), "a-b", "éabc", "Kelly", "  "}) {
+            assertThatThrownBy(() -> controller.create(new RegistrationRequest(username, "password")))
+                    .isInstanceOfSatisfying(ResponseStatusException.class, e ->
+                            assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         }
-
+        assertThatThrownBy(() -> controller.create(new RegistrationRequest("player", "é".repeat(37))))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e ->
+                        assertThat(e.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
         verify(repository, never()).save(any(User.class));
     }
 
     @Test
-    void rejectsBlankRegistrationFieldsWithoutSavingUser() {
+    void mapsUsernameConstraintRaceToConflict() {
         UserRepository repository = mock(UserRepository.class);
-        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        TokenService tokenService = mock(TokenService.class);
-        UserController controller = new UserController(repository, passwordEncoder, tokenService);
+        UserController controller = new UserController(repository, mock(PasswordEncoder.class), mock(TokenService.class));
+        when(repository.findByUsername("player")).thenReturn(Optional.empty());
+        when(repository.save(any(User.class))).thenThrow(new DataIntegrityViolationException(
+                "duplicate username", new ConstraintViolationException("duplicate username", new SQLException(), "uk_users_username")));
 
-        RegistrationRequest[] invalidRequests = {
-                new RegistrationRequest("  ", "player@example.com", "password"),
-                new RegistrationRequest("Player", "  ", "password"),
-                new RegistrationRequest("Player", "player@example.com", "  ")
-        };
-
-        for (RegistrationRequest request : invalidRequests) {
-            assertThatThrownBy(() -> controller.create(request))
-                    .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
-        }
-
-        verify(repository, never()).save(any(User.class));
-    }
-
-    @Test
-    void rejectsNullRegistrationFieldsAndNullRequestWithoutSavingUser() {
-        UserRepository repository = mock(UserRepository.class);
-        PasswordEncoder passwordEncoder = mock(PasswordEncoder.class);
-        TokenService tokenService = mock(TokenService.class);
-        UserController controller = new UserController(repository, passwordEncoder, tokenService);
-
-        RegistrationRequest[] invalidRequests = {
-                new RegistrationRequest(null, "player@example.com", "password"),
-                new RegistrationRequest("Player", null, "password"),
-                new RegistrationRequest("Player", "player@example.com", null),
-                null
-        };
-
-        for (RegistrationRequest request : invalidRequests) {
-            assertThatThrownBy(() -> controller.create(request))
-                    .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                            assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
-        }
-
-        verify(repository, never()).save(any(User.class));
+        assertThatThrownBy(() -> controller.create(new RegistrationRequest("player", "password")))
+                .isInstanceOfSatisfying(ResponseStatusException.class, e ->
+                        assertThat(e.getStatusCode()).isEqualTo(HttpStatus.CONFLICT));
     }
 }

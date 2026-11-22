@@ -54,10 +54,12 @@ Copie o resultado para `JWT_SECRET`. O backend exige essa chave para iniciar; ma
 
 Neste banco local, a migração para BCrypt foi concluída e o login após a migração foi validado. A ferramenta usada nessa conversão pontual foi removida do código. Se outro banco com senhas legadas for conectado ao backend, planeje uma migração específica com backup antes de usá-lo; não execute uma migração manual no fluxo normal da aplicação.
 
-Para conceder acesso administrativo a uma conta, altere manualmente seu papel no banco apÃ³s verificar o email:
+O cadastro e o login usam nome de usuário e senha. O nome de usuário aceita de 3 a 32 caracteres, entre letras sem acento, números e sublinhado. O backend normaliza o nome em minúsculas.
+
+Para conceder acesso administrativo a uma conta, confirme a identidade do titular e use o nome de usuário registrado:
 
 ```sql
-UPDATE users SET role = 'ADMIN' WHERE email = 'email-verificado@example.com';
+UPDATE users SET role = 'ADMIN' WHERE username = 'usuario_confirmado';
 ```
 
 Novas contas recebem apenas o papel `USER`. O papel `ADMIN` Ã© necessÃ¡rio para criar jogos e importar jogos da IGDB.
@@ -185,8 +187,16 @@ O SQL do Hibernate fica desligado por padrão. Para investigar consultas localme
 1. Fazer backup dos bancos de origem e destino.
 2. Confirmar que as senhas do banco de destino já estão em BCrypt; se houver senhas legadas em texto puro, planejar uma conversão pontual com backup antes de conectar a API protegida.
 3. Configurar `JWT_SECRET` e as credenciais do banco no ambiente de hospedagem e implantar o backend protegido.
-4. Atualizar a URL da API no app Android, gerar uma nova build e validar login e chamadas autenticadas.
+4. Gerar o APK apontando para a API hospedada e validar login e chamadas autenticadas.
 
 ## Android
 
-O navegador é apenas um ambiente de teste. No emulador Android, o backend local continua sendo acessado pelo endereço `http://10.0.2.2:8080`.
+Por padrão, o Flutter usa a API local em `http://localhost:8080` no navegador e em `http://10.0.2.2:8080` no emulador Android.
+
+Para testar pelo celular com a API do Render, gere um APK de depuração na pasta `frontend`:
+
+```powershell
+flutter build apk --debug --dart-define=API_BASE_URL=https://game-match-api-mqya.onrender.com
+```
+
+A URL fica gravada no APK em `build/app/outputs/flutter-apk/app-debug.apk`. Para trocar de servidor, gere outro APK com a URL desejada. O servidor escolhido deve aceitar o mesmo contrato de cadastro e login do app.

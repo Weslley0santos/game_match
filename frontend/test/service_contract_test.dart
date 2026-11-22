@@ -1,11 +1,14 @@
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:game_match/core/config/api_config.dart';
 import 'package:game_match/core/session/user_session.dart';
 import 'package:game_match/data/services/friendship_service.dart';
 import 'package:game_match/data/services/match_service.dart';
 import 'package:game_match/data/services/play_invite_service.dart';
 import 'package:game_match/data/services/rating_service.dart';
+import 'package:game_match/data/services/user_service.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 
@@ -17,11 +20,88 @@ void main() {
     UserSession.setUser({
       'id': 12,
       'name': 'Jogador',
-      'email': 'jogador@example.com',
+      'username': 'jogador_27',
       'accessToken': 'contract-test-token',
     });
   });
   tearDown(UserSession.clear);
+
+  test('session exposes username and token-backed identity', () {
+    expect(UserSession.getUser(), {
+      'id': 12,
+      'name': 'Jogador',
+      'username': 'jogador_27',
+    });
+  });
+
+  test('registration posts to the local or configured API', () async {
+    const configuredUrl = String.fromEnvironment('API_BASE_URL');
+    const registration = {
+      'username': 'Jogador_27',
+      'password': 'test-password',
+    };
+    const createdUser = {
+      'id': 42,
+      'name': 'jogador_27',
+      'username': 'jogador_27',
+    };
+
+    late http.Request sent;
+    final result = await http.runWithClient(
+      () => UserService().createUser(
+        registration['username']!,
+        registration['password']!,
+      ),
+      () => MockClient((request) async {
+        sent = request;
+        return http.Response(jsonEncode(createdUser), 200);
+      }),
+    );
+
+    expect(sent.method, 'POST');
+    expect(
+      sent.url,
+      configuredUrl.isEmpty
+          ? Uri.http(kIsWeb ? 'localhost:8080' : '10.0.2.2:8080', '/users')
+          : Uri.parse(configuredUrl.endsWith('/')
+              ? '${configuredUrl}users'
+              : '$configuredUrl/users'),
+    );
+    expect(jsonDecode(sent.body), registration);
+    expect(result, createdUser);
+  });
+
+  test('login posts username and password and decodes token response', () async {
+    const credentials = {'username': 'Jogador_27', 'password': 'secret'};
+    const authenticated = {
+      'id': 42,
+      'name': 'jogador_27',
+      'username': 'jogador_27',
+      'accessToken': 'jwt-token',
+    };
+    late http.Request sent;
+    final result = await http.runWithClient(
+      () => UserService().login(credentials['username']!, credentials['password']!),
+      () => MockClient((request) async {
+        sent = request;
+        return http.Response(jsonEncode(authenticated), 200);
+      }),
+    );
+    expect(sent.method, 'POST');
+    expect(sent.url, Uri.parse('${ApiConfig.baseUrl}/users/login'));
+    expect(jsonDecode(sent.body), credentials);
+    expect(result, authenticated);
+  });
+
+  test('duplicate username returns a safe specific error', () async {
+    await expectLater(
+      http.runWithClient(
+        () => UserService().createUser('Jogador', 'secret'),
+        () => MockClient((_) async => http.Response('{"message":"secret"}', 409)),
+      ),
+      throwsA(isA<UsernameUnavailableException>()),
+    );
+  });
 
   const rating = {'id': 91, 'userId': 12, 'gameId': 34, 'type': 'LIKE'};
   const friendship = {

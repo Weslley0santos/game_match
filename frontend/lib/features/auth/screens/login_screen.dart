@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../data/services/api_service_helper.dart';
 import '../../../data/services/user_service.dart';
 import '../../../core/session/user_session.dart';
 import '../auth_validators.dart';
@@ -17,14 +18,14 @@ class _LoginScreenState extends State<LoginScreen> {
   final UserService _service = UserService();
   final _formKey = GlobalKey<FormState>();
 
-  final TextEditingController emailController = TextEditingController();
+  final TextEditingController usernameController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
   bool isLoading = false;
 
   @override
   void dispose() {
-    emailController.dispose();
+    usernameController.dispose();
     passwordController.dispose();
     super.dispose();
   }
@@ -36,7 +37,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final user = await _service.login(
-        emailController.text.trim(),
+        usernameController.text.trim(),
         passwordController.text,
       );
 
@@ -48,17 +49,31 @@ class _LoginScreenState extends State<LoginScreen> {
         context,
         MaterialPageRoute(builder: (context) => const MainNavigation()),
       );
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Email ou senha inválidos")),
-      );
+    } on ApiRequestException catch (error) {
+      final message = switch (error.statusCode) {
+        401 => 'Nome de usuário ou senha inválidos',
+        429 => error.message,
+        int status when status >= 500 && status < 600 =>
+          'O servidor está temporariamente indisponível. Tente novamente.',
+        null =>
+          'Não foi possível conectar ao servidor. Tente novamente em instantes.',
+        _ => 'Não foi possível entrar. Tente novamente.',
+      };
+      _showLoginError(message);
+    } catch (_) {
+      _showLoginError('Não foi possível entrar. Tente novamente.');
     } finally {
       if (mounted) {
         setState(() => isLoading = false);
       }
     }
+  }
+
+  void _showLoginError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
   }
 
   @override
@@ -83,12 +98,12 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
                 TextFormField(
-                  controller: emailController,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: AuthValidators.validateEmail,
+                  controller: usernameController,
+                  textCapitalization: TextCapitalization.none,
+                  validator: AuthValidators.validateUsername,
                   style: const TextStyle(color: Colors.white),
                   decoration: const InputDecoration(
-                    labelText: "Email",
+                    labelText: "Nome de usuário",
                     labelStyle: TextStyle(color: Colors.white),
                     errorBorder: OutlineInputBorder(
                       borderSide: BorderSide(color: Colors.red),

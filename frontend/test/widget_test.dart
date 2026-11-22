@@ -14,7 +14,7 @@ void main() {
     await tester.pumpWidget(const MyApp());
 
     expect(find.text('Game Match'), findsOneWidget);
-    expect(find.text('Email'), findsOneWidget);
+    expect(find.text('Nome de usuário'), findsOneWidget);
     expect(find.text('Senha'), findsOneWidget);
     expect(find.text('Entrar'), findsOneWidget);
   });

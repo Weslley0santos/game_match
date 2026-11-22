@@ -4,7 +4,10 @@ import com.gamematch.backend.controller.FriendshipController;
 import com.gamematch.backend.controller.MatchController;
 import com.gamematch.backend.controller.PlayInviteController;
 import com.gamematch.backend.controller.RatingController;
+import com.gamematch.backend.controller.UserController;
+import com.gamematch.backend.dto.LoginRequest;
 import com.gamematch.backend.dto.RatingRequest;
+import com.gamematch.backend.dto.RegistrationRequest;
 import com.gamematch.backend.model.Game;
 import com.gamematch.backend.model.FriendshipStatus;
 import com.gamematch.backend.model.PlayInviteStatus;
@@ -23,18 +26,22 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataAccessException;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import jakarta.persistence.EntityManager;
 import java.sql.SQLException;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -57,6 +64,8 @@ class PostgresPersistenceIntegrationTest {
     @Autowired private FriendshipController friendshipController;
     @Autowired private PlayInviteController playInviteController;
     @Autowired private MatchController matchController;
+    @Autowired private UserController userController;
+    @Autowired private JwtDecoder jwtDecoder;
 
     private User sender;
     private User receiver;
@@ -65,8 +74,8 @@ class PostgresPersistenceIntegrationTest {
     @BeforeEach
     void createTransactionalFixtures() {
         String unique = UUID.randomUUID().toString().replace("-", "");
-        sender = userRepository.saveAndFlush(user("Sender", "sender-" + unique + "@example.test"));
-        receiver = userRepository.saveAndFlush(user("Receiver", "receiver-" + unique + "@example.test"));
+        sender = userRepository.saveAndFlush(user("Sender", "sender_" + unique.substring(0, 12)));
+        receiver = userRepository.saveAndFlush(user("Receiver", "receiver_" + unique.substring(0, 12)));
         game = gameRepository.saveAndFlush(new Game(
                 "Integration Game " + unique,
                 "Puzzle",
@@ -89,20 +98,47 @@ class PostgresPersistenceIntegrationTest {
                 "SELECT version FROM flyway_schema_history WHERE success = true ORDER BY version",
                 String.class
         );
-        assertTrue(appliedVersions.containsAll(List.of("1", "2", "3")), "V1, V2 and V3 must be applied by Flyway");
+        assertTrue(appliedVersions.containsAll(List.of("1", "2", "3", "4")), "V1 through V4 must be applied by Flyway");
         assertTrue(game.getTitle().startsWith("Integration Game "));
     }
 
     @Test
-    void persistsAndReloadsUsersAndEnforcesCaseInsensitiveEmailUniqueness() {
+    void persistsAndReloadsUsersAndEnforcesCanonicalUsernameUniqueness() {
         entityManager.flush();
         entityManager.clear();
 
         User reloaded = userRepository.findById(sender.getId()).orElseThrow();
-        assertEquals(sender.getEmail(), reloaded.getEmail());
+        assertEquals(sender.getUsername(), reloaded.getUsername());
 
-        User duplicate = user("Duplicate", sender.getEmail().toUpperCase());
+        User duplicate = user("Duplicate", sender.getUsername());
         assertThrows(DataAccessException.class, () -> userRepository.saveAndFlush(duplicate));
+    }
+
+    @Test
+    void registersAndLogsInWithPersistedUsernameAndPasswordHash() {
+        String username = "fresh_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
+        String password = " password with spaces ";
+        var registered = userController.create(new RegistrationRequest(" " + username + " ", password));
+
+        entityManager.flush();
+        entityManager.clear();
+        User persisted = userRepository.findByUsername(username).orElseThrow();
+        assertEquals(registered.getId(), persisted.getId());
+        assertEquals(username, persisted.getName());
+        assertNotEquals(password, persisted.getPassword());
+        assertTrue(persisted.getPassword().startsWith("$2"));
+
+        var authenticated = userController.login(
+                new LoginRequest(username.toUpperCase(Locale.ROOT), password));
+        assertEquals(persisted.getId(), authenticated.id());
+        assertEquals(username, authenticated.username());
+        Jwt token = jwtDecoder.decode(authenticated.accessToken());
+        assertEquals(persisted.getId().toString(), token.getSubject());
+        assertEquals("ROLE_USER", token.getClaimAsString("role"));
+
+        var denied = assertThrows(ResponseStatusException.class,
+                () -> userController.login(new LoginRequest(username, password.strip())));
+        assertEquals(HttpStatus.UNAUTHORIZED, denied.getStatusCode());
     }
 
     @Test
@@ -243,10 +279,10 @@ class PostgresPersistenceIntegrationTest {
         assertEquals("23503", cause.getSQLState());
     }
 
-    private User user(String name, String email) {
+    private User user(String name, String username) {
         User user = new User();
         user.setName(name);
-        user.setEmail(email);
+        user.setUsername(username);
         user.setPassword("test-only-password");
         user.setRole(UserRole.USER);
         return user;

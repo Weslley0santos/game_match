@@ -59,12 +59,12 @@ class UserAuthenticationFlowTest {
         users = new HashMap<>();
         nextUserId = new AtomicLong(1);
 
-        when(userRepository.findByEmailIgnoreCase(anyString())).thenAnswer(invocation ->
-                Optional.ofNullable(users.get(normalizeEmail(invocation.getArgument(0)))));
+        when(userRepository.findByUsername(anyString())).thenAnswer(invocation ->
+                Optional.ofNullable(users.get(normalizeUsername(invocation.getArgument(0)))));
         when(userRepository.save(any(User.class))).thenAnswer(invocation -> {
             User user = invocation.getArgument(0);
             user.setId(nextUserId.getAndIncrement());
-            users.put(normalizeEmail(user.getEmail()), user);
+            users.put(user.getUsername(), user);
             return user;
         });
         when(userRepository.findAll()).thenAnswer(invocation -> List.copyOf(users.values()));
@@ -75,23 +75,25 @@ class UserAuthenticationFlowTest {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Player One","email":" Player@Example.com ","password":"correct-horse"}
+                                {"username":" Player_One ","password":"correct-horse"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Player One"))
-                .andExpect(jsonPath("$.email").value("player@example.com"))
+                .andExpect(jsonPath("$.name").value("player_one"))
+                .andExpect(jsonPath("$.username").value("player_one"))
+                .andExpect(jsonPath("$.email").doesNotExist())
                 .andExpect(jsonPath("$.password").doesNotExist());
 
         String loginResponse = mockMvc.perform(post("/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"PLAYER@example.com","password":"correct-horse"}
+                                {"username":"PLAYER_ONE","password":"correct-horse"}
                                 """))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(1))
-                .andExpect(jsonPath("$.name").value("Player One"))
-                .andExpect(jsonPath("$.email").value("player@example.com"))
+                .andExpect(jsonPath("$.name").value("player_one"))
+                .andExpect(jsonPath("$.username").value("player_one"))
+                .andExpect(jsonPath("$.email").doesNotExist())
                 .andExpect(jsonPath("$.tokenType").value("Bearer"))
                 .andExpect(jsonPath("$.accessToken").isNotEmpty())
                 .andReturn()
@@ -104,7 +106,7 @@ class UserAuthenticationFlowTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1))
-                .andExpect(jsonPath("$[0].name").value("Player One"));
+                .andExpect(jsonPath("$[0].name").value("player_one"));
     }
 
     @Test
@@ -121,14 +123,14 @@ class UserAuthenticationFlowTest {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Player Two","email":"player.two@example.com","password":"another-correct-horse"}
+                                {"username":"player_two","password":"another-correct-horse"}
                                 """))
                 .andExpect(status().isOk());
 
         String loginResponse = mockMvc.perform(post("/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"player@example.com","password":"correct-horse"}
+                                {"username":"player_one","password":"correct-horse"}
                                 """))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -146,7 +148,7 @@ class UserAuthenticationFlowTest {
 
         assertThat(directory).hasSize(2);
         assertThat(directory).extracting(user -> user.get("name"))
-                .containsExactlyInAnyOrder("Player One", "Player Two");
+                .containsExactlyInAnyOrder("player_one", "player_two");
         assertThat(directory).allSatisfy(user ->
                 assertThat(user.keySet()).containsExactlyInAnyOrder("id", "name"));
     }
@@ -158,7 +160,7 @@ class UserAuthenticationFlowTest {
         mockMvc.perform(post("/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"player@example.com","password":"wrong-password"}
+                                {"username":"player_one","password":"wrong-password"}
                                 """))
                 .andExpect(status().isUnauthorized());
     }
@@ -170,29 +172,17 @@ class UserAuthenticationFlowTest {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Another Player","email":"PLAYER@example.com","password":"another-password"}
+                                {"username":"PLAYER_ONE","password":"another-password"}
                                 """))
                 .andExpect(status().isConflict());
     }
 
     @Test
-    void rejectsMalformedRegistrationEmailBeforeCreatingAccount() throws Exception {
-        for (String email : new String[]{
-                "player@example",
-                ".player@example.com",
-                "player.@example.com",
-                "player..name@example.com",
-                "player@example..com",
-                "player@-example.com",
-                "player@example-.com",
-                "player@exam_ple.com",
-                "player,name@example.com"
-        }) {
+    void rejectsMalformedRegistrationUsernameBeforeCreatingAccount() throws Exception {
+        for (String username : new String[]{"ab", "a".repeat(33), "player-name", "jogador ç", "Kelly", ""}) {
             mockMvc.perform(post("/users")
                             .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {"name":"Player One","email":"%s","password":"correct-horse"}
-                                    """.formatted(email)))
+                            .content("{\"username\":\"%s\",\"password\":\"correct-horse\"}".formatted(username)))
                     .andExpect(status().isBadRequest());
         }
 
@@ -204,9 +194,8 @@ class UserAuthenticationFlowTest {
     void rejectsMissingRegistrationFieldsBeforeCreatingAccount() throws Exception {
         String[] requests = {
                 "{}",
-                "{\"name\":null,\"email\":\"player@example.com\",\"password\":\"correct-horse\"}",
-                "{\"name\":\"Player One\",\"email\":null,\"password\":\"correct-horse\"}",
-                "{\"name\":\"Player One\",\"email\":\"player@example.com\",\"password\":null}"
+                "{\"username\":null,\"password\":\"correct-horse\"}",
+                "{\"username\":\"player_one\",\"password\":null}"
         };
 
         for (String request : requests) {
@@ -221,24 +210,24 @@ class UserAuthenticationFlowTest {
     }
 
     @Test
-    void rejectsMalformedLoginEmailBeforeLookingUpAccount() throws Exception {
+    void rejectsMalformedLoginUsernameBeforeLookingUpAccount() throws Exception {
         mockMvc.perform(post("/users/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"email":"player@exam_ple.com","password":"correct-horse"}
+                                {"username":"player-name","password":"correct-horse"}
                                 """))
                 .andExpect(status().isUnauthorized());
 
-        verify(userRepository, never()).findByEmailIgnoreCase(anyString());
+        verify(userRepository, never()).findByUsername(anyString());
     }
 
     @Test
     void rejectsMissingLoginCredentialsBeforeLookingUpAccount() throws Exception {
         String[] requests = {
                 "{}",
-                "{\"email\":null,\"password\":\"correct-horse\"}",
-                "{\"email\":\"player@example.com\",\"password\":null}",
-                "{\"email\":\"player@example.com\",\"password\":\"  \"}"
+                "{\"username\":null,\"password\":\"correct-horse\"}",
+                "{\"username\":\"player_one\",\"password\":null}",
+                "{\"username\":\"player_one\",\"password\":\"  \"}"
         };
 
         for (String request : requests) {
@@ -248,20 +237,20 @@ class UserAuthenticationFlowTest {
                     .andExpect(status().isUnauthorized());
         }
 
-        verify(userRepository, never()).findByEmailIgnoreCase(anyString());
+        verify(userRepository, never()).findByUsername(anyString());
     }
 
     private void registerPlayer() throws Exception {
         mockMvc.perform(post("/users")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
-                                {"name":"Player One","email":"player@example.com","password":"correct-horse"}
+                                {"username":"player_one","password":"correct-horse"}
                                 """))
                 .andExpect(status().isOk());
     }
 
-    private String normalizeEmail(String email) {
-        return email.trim().toLowerCase(Locale.ROOT);
+    private String normalizeUsername(String username) {
+        return username.trim().toLowerCase(Locale.ROOT);
     }
 
     @TestConfiguration

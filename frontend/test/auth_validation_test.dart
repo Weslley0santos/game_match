@@ -3,53 +3,45 @@ import 'package:game_match/features/auth/auth_validators.dart';
 
 void main() {
   group('AuthValidators', () {
-    test('rejects a missing or whitespace-only name', () {
-      expect(AuthValidators.validateName(null), 'Informe o nome');
-      expect(AuthValidators.validateName('   '), 'Informe o nome');
-    });
-
-    test('accepts a name after trimming surrounding whitespace', () {
-      expect(AuthValidators.validateName('  Jogador  '), isNull);
-    });
-
-    test('requires an email address', () {
-      for (final email in [null, '', '   ']) {
-        expect(AuthValidators.validateEmail(email), 'Informe o email');
+    test('requires a username', () {
+      for (final username in [null, '', '   ']) {
+        expect(AuthValidators.validateUsername(username), 'Informe o nome de usuário');
       }
     });
 
-    test('rejects malformed email addresses', () {
-      for (final email in [
-        'sem-arroba',
-        'jogador@',
-        'jogador@example',
-        'jogador @example.com',
-        '.jogador@example.com',
-        'jogador.@example.com',
-        'jo..gador@example.com',
-        'jogador@example..com',
-        'jogador@-example.com',
-        'jogador@example-.com',
-        'jogador@exam_ple.com',
-        'jogador,nome@example.com',
+    test('accepts trimmed ASCII usernames from 3 to 32 characters', () {
+      expect(AuthValidators.validateUsername('  Ab_09  '), isNull);
+      expect(AuthValidators.validateUsername('a_b'), isNull);
+      expect(AuthValidators.validateUsername(List.filled(32, 'a').join()), isNull);
+    });
+
+    test('rejects usernames outside the allowed length and character set', () {
+      for (final username in [
+        'ab',
+        List.filled(33, 'a').join(),
+        'joão',
+        'nome de usuario',
+        'a-b',
+        'a.b',
       ]) {
-        expect(
-          AuthValidators.validateEmail(email),
-          'Informe um email válido',
-          reason: 'email: $email',
-        );
+        expect(AuthValidators.validateUsername(username), 'Use 3 a 32 letras, números ou _');
       }
     });
 
-    test('accepts a well-formed email with surrounding whitespace', () {
-      expect(AuthValidators.validateEmail('  jogador@example.com  '), isNull);
-    });
-
-    test('requires a password but does not impose an undocumented length rule', () {
+    test('requires password and enforces BCrypt UTF-8 byte limit without truncation', () {
       expect(AuthValidators.validatePassword(null), 'Informe a senha');
       expect(AuthValidators.validatePassword(''), 'Informe a senha');
       expect(AuthValidators.validatePassword('   '), 'Informe a senha');
-      expect(AuthValidators.validatePassword('x'), isNull);
+      expect(AuthValidators.validatePassword(List.filled(72, 'x').join()), isNull);
+      expect(
+        AuthValidators.validatePassword(List.filled(73, 'x').join()),
+        'A senha deve ter no máximo 72 bytes',
+      );
+      expect(AuthValidators.validatePassword(List.filled(36, 'é').join()), isNull);
+      expect(
+        AuthValidators.validatePassword(List.filled(37, 'é').join()),
+        'A senha deve ter no máximo 72 bytes',
+      );
     });
   });
 }

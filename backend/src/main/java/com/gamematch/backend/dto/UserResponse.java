@@ -6,19 +6,19 @@ public class UserResponse {
 
     private Long id;
     private String name;
-    private String email;
+    private String username;
 
-    public UserResponse(Long id, String name, String email) {
+    public UserResponse(Long id, String name, String username) {
         this.id = id;
         this.name = name;
-        this.email = email;
+        this.username = username;
     }
 
     public static UserResponse from(User user) {
         return new UserResponse(
                 user.getId(),
                 user.getName(),
-                user.getEmail()
+                user.getUsername()
         );
     }
 
@@ -30,7 +30,7 @@ public class UserResponse {
         return name;
     }
 
-    public String getEmail() {
-        return email;
+    public String getUsername() {
+        return username;
     }
 }

@@ -13,7 +13,7 @@ void main() {
     UserSession.setUser({
       'id': screenTestUserId,
       'name': 'Jogador',
-      'email': 'jogador@example.com',
+      'username': 'jogador_27',
       'accessToken': 'friends-widget-test-token',
     });
   });

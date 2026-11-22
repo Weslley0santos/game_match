@@ -17,7 +17,7 @@ Não há evidência de Playwright, Cypress, outra ferramenta E2E, configuração
 
 Os fluxos abaixo foram identificados nas telas, serviços e controladores presentes. O inventário de cobertura atual está em [test-inventory.md](test-inventory.md).
 
-1. **Cadastro e login:** validar dados, cadastrar conta, autenticar, guardar a sessão e entrar na navegação principal.
+1. **Cadastro e login:** validar nome de usuário e senha, negar duplicatas com diferença de caixa, autenticar com as credenciais novas, guardar a sessão e entrar na navegação principal. Verificar a migração de contas anteriores e acesso a uma rota protegida com o JWT.
 2. **Avaliação de jogos:** carregar jogos, registrar dislike/like/favorito e refletir as avaliações no estado exibido.
 3. **Amizades:** enviar solicitação, consultar pendentes, aceitar/rejeitar e consultar amigos.
 4. **Compatibilidade:** comparar interesses e mostrar jogos compatíveis e amigos interessados.
